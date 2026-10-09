@@ -110,10 +110,15 @@ svg.i{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-widt
 
 .modes{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin-inline:-14px;padding-inline:14px;padding-block:2px}
 .modes::-webkit-scrollbar{display:none}
-.mode{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;padding:8px 12px 8px 10px;border-radius:999px;border:1.5px solid var(--line);color:var(--muted);font-size:14px;font-weight:700}
+.mode{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;padding:8px 12px 8px 10px;border-radius:999px;border:1.5px dashed var(--line);color:var(--muted);font-size:14px;font-weight:700;opacity:.6;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;transition:opacity .15s,background .15s}
 .mode svg{color:var(--muted)}
-.mode[aria-pressed="true"]{border-color:var(--mc);color:var(--ink);background:color-mix(in srgb,var(--mc) 13%,var(--surface))}
+.mode span{text-decoration:line-through;text-decoration-thickness:1.5px}
+.mode[aria-pressed="true"]{opacity:1;border-style:solid;border-color:var(--mc);color:var(--ink);background:color-mix(in srgb,var(--mc) 20%,var(--surface))}
+.mode[aria-pressed="true"] span{text-decoration:none}
 .mode[aria-pressed="true"] svg{color:var(--mc)}
+.mode.all{--mc:var(--accent)}
+.mode.all span{text-decoration:none}
+.modes-hint{font-size:12px;color:var(--muted);margin-top:-6px}
 
 /* Resultater */
 .res-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding-top:4px}
@@ -160,8 +165,8 @@ svg.i{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-widt
 .leg .tx b{font-weight:700}
 .leg .tx small{color:var(--muted);font-size:13px}
 
-.maprow{padding-top:14px;list-style:none}
-.maprow .btn{width:100%}
+.maprow{padding-top:14px;list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.maprow .btn{width:100%;padding-inline:10px}
 .maprow svg{width:18px;height:18px}
 .dep-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;background:var(--surface);border-radius:16px;padding:12px 14px;box-shadow:var(--shadow)}
 .dep-row .dest b{display:block;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -246,6 +251,7 @@ footer a{color:inherit}
     </div>
 
     <div class="modes" id="modes" role="group" aria-label="Transportmidler"></div>
+    <div class="modes-hint">Trykk for av/på · hold inne for «bare denne»</div>
   </section>
 
   <div class="res-head">
@@ -426,9 +432,24 @@ const dateTimeVar = () => (state.when==='now' ? new Date() : new Date(`${state.d
 
 async function fetchTrips(from,to){
   if(!live) return demoTrips(from,to);
-  const modes = {accessMode:'foot',egressMode:'foot',directMode:'foot',transportModes:[...state.modes].map(m=>({transportMode:m}))};
-  const d=await gql(TRIP_Q,{from:loc(from),to:loc(to),dateTime:dateTimeVar(),arriveBy:state.when==='arrive',modes});
-  return d.trip.tripPatterns;
+  // Entur gir bare de «beste» forslagene. For å få både tog og buss med søker vi også
+  // i hver hovedgruppe for seg, og slår sammen resultatene.
+  const base={from:loc(from),to:loc(to),dateTime:dateTimeVar(),arriveBy:state.when==='arrive'};
+  const mk=list=>({accessMode:'foot',egressMode:'foot',directMode:'foot',transportModes:list.map(m=>({transportMode:m}))});
+  const sel=[...state.modes], groups=[sel];
+  const rail=sel.filter(m=>m==='rail'), road=sel.filter(m=>m==='bus'||m==='coach');
+  if(rail.length && sel.length>1) groups.push(rail);
+  if(road.length && road.length<sel.length) groups.push(road);
+  const res=await Promise.allSettled(groups.map(g=>gql(TRIP_Q,{...base,modes:mk(g)})));
+  if(res[0].status==='rejected') throw res[0].reason;
+  const seen=new Set(), out=[];
+  for(const r of res){ if(r.status!=='fulfilled') continue;
+    for(const p of r.value.trip.tripPatterns){
+      const k=p.expectedStartTime+'|'+p.legs.filter(l=>l.mode!=='foot').map(l=>l.mode+(l.line?.publicCode||'')).join('>');
+      if(!seen.has(k)){ seen.add(k); out.push(p); } } }
+  const fastest=Math.min(...out.map(p=>p.duration));
+  return out.filter(p=>p.duration<=fastest*2.2+600)
+    .sort((a,b)=>new Date(a.expectedStartTime)-new Date(b.expectedStartTime)).slice(0,10);
 }
 async function resolveStop(p){
   if(p.id && p.id.startsWith('NSR:StopPlace')) return p;
@@ -508,16 +529,39 @@ function renderTrips(list){
         ${cancelled?`<div class="warnline" style="color:var(--crit)">${ic('warn')}<span>Del av reisen er innstilt.</span></div>`:''}
         ${sits.map(s=>`<div class="warnline">${ic('warn')}<span>${esc(s)}</span></div>`).join('')}
       </button>
-      <ol class="legs" id="legs${i}" hidden>${p.legs.map(legRow).join('')}${live?`<li class="maprow"><button class="btn ghost" data-map="${i}">${MAP_SVG} Vis reisen på kart</button></li>`:''}</ol>
+      <ol class="legs" id="legs${i}" hidden>${p.legs.map(legRow).join('')}${live?`<li class="maprow"><button class="btn ghost" data-map="${i}">${MAP_SVG} Vis på kart</button><button class="btn ghost" data-sharetrip="${i}">${SHARE_SVG} Del reisen</button></li>`:''}</ol>
     </li>`;
   }).join('');
   lastTrips=list;
   res.querySelectorAll('[data-map]').forEach(b=>b.onclick=()=>openOnMap(lastTrips[+b.dataset.map]));
+  res.querySelectorAll('[data-sharetrip]').forEach(b=>b.onclick=()=>shareTrip(lastTrips[+b.dataset.sharetrip]));
   res.querySelectorAll('.trip-head').forEach(b=>b.onclick=()=>{
     const open=b.getAttribute('aria-expanded')==='true'; b.setAttribute('aria-expanded',!open); b.nextElementSibling.hidden=open;});
 }
 let lastTrips=[];
 const MAP_SVG='<svg class="i" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 3.5 2.5 5.5v11l4.5-2 6 2 4.5-2v-11l-4.5 2z"/><path d="M7 3.5v11M13 5.5v11"/></svg>';
+const SHARE_SVG='<svg class="i" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 13V2.5M6.5 6 10 2.5 13.5 6M6 9H4.5v8.5h11V9H14"/></svg>';
+function tripPayload(p){
+  const pl=x=>({name:x?.name,lat:x?.latitude,lon:x?.longitude});
+  const legs=p.legs.filter(l=>l.fromPlace?.latitude!=null&&l.toPlace?.latitude!=null).map(l=>({
+    mode:l.mode, code:l.line?.publicCode, sj:l.serviceJourney?.id||null, date:l.serviceDate||null, points:l.pointsOnLink?.points||null,
+    from:pl(l.fromPlace), to:pl(l.toPlace), dep:l.expectedStartTime, arr:l.expectedEndTime, dur:l.duration }));
+  if(!legs.length) return null;
+  return {from:state.from?.name||legs[0].from.name, to:state.to?.name||legs.at(-1).to.name, start:p.expectedStartTime, end:p.expectedEndTime, legs};
+}
+// Kort delbar lenke: uten linjeføring – mottakeren henter den selv fra Entur
+function tripLink(t){
+  const r=n=>Math.round(n*1e5)/1e5;
+  const c={f:t.from,t:t.to,s:t.start,e:t.end,l:t.legs.map(l=>[l.mode,l.code||'',l.sj||'',l.date||'',l.from.name,r(l.from.lat),r(l.from.lon),l.to.name,r(l.to.lat),r(l.to.lon),l.dep,l.arr,Math.round(l.dur||0)])};
+  const b64=btoa(unescape(encodeURIComponent(JSON.stringify(c)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  return location.origin+location.pathname.replace(/[^/]*$/,'')+'kart.html?r='+b64;
+}
+async function shareTrip(p){
+  const t=tripPayload(p); if(!t){ toast('Fant ikke kartdata for reisen'); return; }
+  const url=tripLink(t), text=`${t.from} → ${t.to}, ${hm(t.start)}–${hm(t.end)}`;
+  if(navigator.share){ try{ await navigator.share({title:'Min reise',text,url}); }catch{} return; }
+  try{ await navigator.clipboard.writeText(url); toast('Lenken til reisen er kopiert'); }catch{ toast('Kunne ikke kopiere lenken'); }
+}
 function openOnMap(p){
   const pl=x=>({name:x?.name,lat:x?.latitude,lon:x?.longitude});
   const legs=p.legs.filter(l=>l.fromPlace?.latitude!=null&&l.toPlace?.latitude!=null).map(l=>({
@@ -618,7 +662,8 @@ function fromParams(qs){
   state.from=decPlace(p.get('fra'),p.get('fn')); state.to=decPlace(p.get('til'),p.get('tn'));
   const k=p.get('k'); state.when=k==='ankomst'?'arrive':k==='avreise'?'depart':'now';
   if(p.get('t')) state.time=p.get('t'); if(p.get('d')) state.date=p.get('d');
-  if(p.get('m')){const s=p.get('m').split(',').filter(m=>LABEL[m]); if(s.length) state.modes=new Set(s);}
+  const ms=(p.get('m')||'').split(',').filter(m=>LABEL[m]);
+  state.modes = ms.length ? new Set(ms) : new Set(MODES.map(m=>m[0]));
   return true;
 }
 function shareUrl(){
@@ -651,12 +696,14 @@ let saved=[];
 function renderSaved(){
   const el=$('#saved'); el.hidden=!saved.length;
   el.innerHTML=saved.map((s,i)=>`<span class="chip-saved"><button data-i="${i}" class="go"><b>${esc(s.name)}</b></button><button class="x" data-x="${i}" aria-label="Fjern ${esc(s.name)}"><svg class="i" viewBox="0 0 20 20"><path d="M6 6l8 8M14 6l-8 8"/></svg></button></span>`).join('');
-  el.querySelectorAll('.go').forEach(b=>b.onclick=()=>{fromParams(saved[b.dataset.i].q);syncUI();run();});
+  el.querySelectorAll('.go').forEach(b=>b.onclick=()=>{fromParams(routeOnly(saved[b.dataset.i].q)||'fra=');state.when='now';syncUI();run();});
   el.querySelectorAll('.x').forEach(b=>b.onclick=()=>{saved.splice(b.dataset.x,1);storeSaved(saved);renderSaved();syncSaveBtn();});
 }
-function syncSaveBtn(){const q=toParams();$('#saveBtn').setAttribute('aria-pressed',saved.some(s=>s.q===q));}
+// Favoritter er strekninger (fra/til). Tid og transportmidler velges fritt hver gang.
+function routeOnly(q){ const p=new URLSearchParams(q), o=new URLSearchParams(); ['fra','fn','til','tn'].forEach(k=>{ if(p.get(k)) o.set(k,p.get(k)); }); return o.toString(); }
+function syncSaveBtn(){const q=routeOnly(toParams());$('#saveBtn').setAttribute('aria-pressed',saved.some(s=>s.q===q));}
 $('#saveBtn').onclick=()=>{
-  const q=toParams(), i=saved.findIndex(s=>s.q===q);
+  const q=routeOnly(toParams()), i=saved.findIndex(s=>s.q===q);
   if(i>=0){saved.splice(i,1);toast('Fjernet fra Mine reiser');}
   else{saved.unshift({name:`${state.from?.name||'Min posisjon'} → ${state.to?.name||'avganger'}`,q});toast('Lagret i Mine reiser');}
   storeSaved(saved); renderSaved(); syncSaveBtn();
@@ -668,12 +715,21 @@ function syncUI(){
   $('#fromClear').hidden=!state.from; $('#toClear').hidden=!state.to;
   document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.k===state.when));
   $('#dt').hidden=state.when==='now'; $('#time').value=state.time; $('#date').value=state.date;
-  document.querySelectorAll('.mode').forEach(b=>b.setAttribute('aria-pressed',state.modes.has(b.dataset.m)));
+  document.querySelectorAll('.mode[data-m]').forEach(b=>b.setAttribute('aria-pressed',state.modes.has(b.dataset.m)));
+  $('#modeAll').setAttribute('aria-pressed',state.modes.size===MODES.length);
   syncSaveBtn();
 }
-$('#modes').innerHTML=MODES.map(([k,l])=>`<button class="mode" data-m="${k}" style="--mc:var(--m-${k})" aria-pressed="true">${ic(k)}${l}</button>`).join('');
-document.querySelectorAll('.mode').forEach(b=>b.onclick=()=>{
-  const m=b.dataset.m; state.modes.has(m)?state.modes.delete(m):state.modes.add(m); syncUI(); debounceRun();});
+const ALL_MODES=()=>new Set(MODES.map(m=>m[0]));
+$('#modes').innerHTML=`<button class="mode all" id="modeAll" aria-pressed="true">Alle</button>`+MODES.map(([k,l])=>`<button class="mode" data-m="${k}" style="--mc:var(--m-${k})" aria-pressed="true">${ic(k)}<span>${l}</span></button>`).join('');
+$('#modeAll').onclick=()=>{ state.modes=ALL_MODES(); syncUI(); debounceRun(); };
+document.querySelectorAll('.mode[data-m]').forEach(b=>{
+  let timer=null, long=false;
+  const m=b.dataset.m;
+  b.addEventListener('pointerdown',()=>{ long=false; clearTimeout(timer); timer=setTimeout(()=>{ long=true; state.modes=new Set([m]); syncUI(); run(); toast(`Viser bare ${LABEL[m].toLowerCase()} · trykk «Alle» for alt`); if(navigator.vibrate) navigator.vibrate(15); },450); });
+  ['pointerup','pointerleave','pointercancel'].forEach(ev=>b.addEventListener(ev,()=>clearTimeout(timer)));
+  b.addEventListener('contextmenu',e=>e.preventDefault());
+  b.onclick=()=>{ if(long){ long=false; return; } state.modes.has(m)?state.modes.delete(m):state.modes.add(m); syncUI(); debounceRun(); };
+});
 document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{state.when=b.dataset.k;syncUI();run();});
 $('#time').onchange=e=>{state.time=e.target.value||state.time;run();};
 $('#date').onchange=e=>{state.date=e.target.value||state.date;run();};
@@ -721,7 +777,7 @@ async function detect(){
 }
 (async()=>{
   await detect();
-  saved = loadSaved(); if(!saved.length && !live) saved=[{name:'Eksempel: Til flyet',q:'fra=NSR%3AStopPlace%3A58404&fn=Nationaltheatret&til=60.19340%2C11.09760&tn=Oslo+lufthavn&m=rail%2Ccoach'}];
+  saved = loadSaved().map(s=>({...s,q:routeOnly(s.q)})).filter((s,i,a)=>a.findIndex(x=>x.q===s.q)===i); storeSaved(saved); if(!saved.length && !live) saved=[{name:'Eksempel: Til flyet',q:'fra=NSR%3AStopPlace%3A58404&fn=Nationaltheatret&til=60.19340%2C11.09760&tn=Oslo+lufthavn&m=rail%2Ccoach'}];
   const fromUrl=fromParams(location.search);
   if(!fromUrl && !live){ state.from=DEMO_STOPS[2]; state.to=DEMO_STOPS[6]; }
   syncUI(); renderSaved(); run();

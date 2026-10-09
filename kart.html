@@ -147,7 +147,7 @@ path.acc{fill:var(--accent);fill-opacity:.12;stroke:var(--accent);stroke-opacity
 
 <div class="side">
   <button class="round" id="locate" aria-label="Vis min posisjon"><svg class="i" viewBox="0 0 20 20"><path d="M17.5 2.5 2.5 9l6.5 2.5L11.5 18z"/></svg></button>
-  <button class="round" id="share" aria-label="Del kartutsnittet"><svg class="i" viewBox="0 0 20 20"><path d="M10 13V2.5M6.5 6 10 2.5 13.5 6M6 9H4.5v8.5h11V9H14"/></svg></button>
+  <button class="round" id="share" aria-label="Del kartet eller reisen"><svg class="i" viewBox="0 0 20 20"><path d="M10 13V2.5M6.5 6 10 2.5 13.5 6M6 9H4.5v8.5h11V9H14"/></svg></button>
 </div>
 
 <div class="panel">
@@ -416,6 +416,7 @@ async function fetchTracked(id){
       t.shape=prepShape(pts.length>=Math.max(2,calls.length)?pts:calls.map(c=>[c.lat,c.lon]));
     }
     snapCalls(t.shape,calls);
+    fillLegGeometry(id);
     tickEst();
     if(id===selSj){ drawSel(); renderCard(); }
   }catch(e){ if(id===selSj) renderCard(); }
@@ -445,12 +446,37 @@ function drawSel(){
   });
 }
 
-/* ---------- Egen reise (fra reisesøket) ---------- */
+/* ---------- Egen reise (fra reisesøket eller delt lenke) ---------- */
+function legPts(l){ return l.pts || (l.points?decodePolyline(l.points):null) || [[l.from.lat,l.from.lon],[l.to.lat,l.to.lon]]; }
+function nearestIdx(pts,p,from=0){ let best=Infinity,bi=from; for(let i=from;i<pts.length;i++){ const d=dist(pts[i],p); if(d<best){best=d;bi=i;} } return bi; }
+function fillLegGeometry(id){
+  const t=tracked.get(id); if(!trip||!t?.shape) return;
+  let changed=false;
+  for(const l of trip.legs){
+    if(l.sj!==id || l.points || l.pts) continue;
+    const pts=t.shape.pts, i0=nearestIdx(pts,[l.from.lat,l.from.lon]), i1=nearestIdx(pts,[l.to.lat,l.to.lon],i0);
+    if(i1>i0){ l.pts=[[l.from.lat,l.from.lon],...pts.slice(i0,i1+1),[l.to.lat,l.to.lon]]; changed=true; }
+  }
+  if(changed) drawTrip();
+}
+function tripLink(t){
+  const r=n=>Math.round(n*1e5)/1e5;
+  const c={f:t.from,t:t.to,s:t.start,e:t.end,l:t.legs.map(l=>[l.mode,l.code||'',l.sj||'',l.date||'',l.from.name,r(l.from.lat),r(l.from.lon),l.to.name,r(l.to.lat),r(l.to.lon),l.dep,l.arr,Math.round(l.dur||0)])};
+  const b64=btoa(unescape(encodeURIComponent(JSON.stringify(c)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  return location.origin+location.pathname+'?r='+b64;
+}
+function decodeTripLink(r){
+  try{
+    const c=JSON.parse(decodeURIComponent(escape(atob(r.replace(/-/g,'+').replace(/_/g,'/')))));
+    return {from:c.f,to:c.t,start:c.s,end:c.e,shared:true,legs:c.l.map(a=>({mode:a[0],code:a[1]||null,sj:a[2]||null,date:a[3]||null,
+      from:{name:a[4],lat:a[5],lon:a[6]},to:{name:a[7],lat:a[8],lon:a[9]},dep:a[10],arr:a[11],dur:a[12],points:null}))};
+  }catch{ return null; }
+}
 function drawTrip(){
   tripLayer.clearLayers(); if(!trip) return;
   const legs=trip.legs;
   legs.forEach((l,i)=>{
-    const pts=l.points?decodePolyline(l.points):[[l.from.lat,l.from.lon],[l.to.lat,l.to.lon]];
+    const pts=legPts(l);
     if(l.mode==='foot'){ L.polyline(pts,{className:'walk',weight:4,dashArray:'1 8',lineCap:'round',interactive:false}).addTo(tripLayer); return; }
     const m=normMode(l.mode);
     L.polyline(pts,{className:'rcase',weight:11,interactive:false}).addTo(tripLayer);
@@ -465,11 +491,11 @@ function drawTrip(){
 }
 function fitTrip(){
   if(!trip) return; const b=L.latLngBounds([]);
-  trip.legs.forEach(l=>{ (l.points?decodePolyline(l.points):[[l.from.lat,l.from.lon],[l.to.lat,l.to.lon]]).forEach(p=>b.extend(p)); });
+  trip.legs.forEach(l=>legPts(l).forEach(p=>b.extend(p)));
   if(b.isValid()) map.fitBounds(b,{paddingTopLeft:[24,90],paddingBottomRight:[24,280],maxZoom:16});
 }
 function startTrip(t){
-  trip=t; save('trip',t); drawTrip(); updateFocus();
+  trip=t; save('trip',{...t,legs:t.legs.map(({pts,...l})=>l)}); drawTrip(); updateFocus();
   t.legs.forEach(l=>{ if(l.sj) track(l.sj,l.date); });
   renderTrip();
 }
@@ -486,7 +512,7 @@ function renderTrip(){
   const parts=trip.legs.map(l=> l.mode==='foot'
     ? (l.dur>=120?`<span class="walkc">${ICON_WALK}${Math.round(l.dur/60)}</span>`:'')
     : `<span class="lp" style="--mc:var(--m-${normMode(l.mode)})">${ic(normMode(l.mode))}${esc(l.code||'')}</span>`).filter(Boolean).join('<span class="sepc">›</span>');
-  el.innerHTML=`<div class="h"><span class="tag gps">Din reise</span><b class="num">${hm(trip.start)} – ${hm(trip.end)}</b>
+  el.innerHTML=`<div class="h"><span class="tag gps">${trip.shared?'Delt reise':'Din reise'}</span><b class="num">${hm(trip.start)} – ${hm(trip.end)}</b>
      <button class="x" id="tripFit" aria-label="Vis hele reisen"><svg class="i" viewBox="0 0 20 20"><path d="M3 7.5V3h4.5M17 7.5V3h-4.5M3 12.5V17h4.5M17 12.5V17h-4.5"/></svg></button>
      <button class="x" id="tripX" aria-label="Avslutt reisevisning"><svg class="i" viewBox="0 0 20 20"><path d="M6 6l8 8M14 6l-8 8"/></svg></button></div>
    <div class="row"><span>${esc(trip.from)} → ${esc(trip.to)}</span></div>
@@ -581,14 +607,16 @@ $('#locate').onclick=()=>startWatch(true);
 
 /* ---------- Deling ---------- */
 $('#share').onclick=async()=>{
-  const url=location.href;
-  if(navigator.share){ try{ await navigator.share({title:'Reisekart',url}); }catch{} return; }
-  try{ await navigator.clipboard.writeText(url); toast('Lenken er kopiert'); }catch{ toast(url); }
+  let url=location.href, title='Reisekart', text;
+  if(trip){ url=tripLink(trip); title='Min reise'; text=`${trip.from} → ${trip.to}, ${hm(trip.start)}–${hm(trip.end)}`; }
+  if(navigator.share){ try{ await navigator.share({title,text,url}); }catch{} return; }
+  try{ await navigator.clipboard.writeText(url); toast(trip?'Lenken til reisen er kopiert':'Lenken er kopiert'); }catch{ toast('Kunne ikke kopiere lenken'); }
 };
 function toast(t){const el=$('#toast');el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,2200);}
 
 /* ---------- Løkker ---------- */
-if(qs.get('reise')){ const t=load('trip',null); if(t?.legs?.length){ startTrip(t); if(!qs.get('lat')) fitTrip(); } }
+if(qs.get('r')){ const t=decodeTripLink(qs.get('r')); if(t?.legs?.length){ startTrip(t); fitTrip(); } else toast('Lenken til reisen kunne ikke leses'); }
+else if(qs.get('reise')){ const t=load('trip',null); if(t?.legs?.length){ startTrip(t); if(!qs.get('lat')) fitTrip(); } }
 startWatch(false);
 pollLive(); pollEst(); hint();
 setInterval(pollLive,LIVE_MS);
