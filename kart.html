@@ -497,13 +497,20 @@ function drawSits(){
   for(const x of currentSits()){
     x.pts.forEach((p,k)=>{
       const mk=L.marker([p.lat,p.lon],{icon:L.divIcon({className:'vm',html:`<div class="wpin ${sevRank(x.sev)>=3?'crit':''}"><span>!</span></div>`,iconSize:[0,0]}),zIndexOffset:1500,keyboard:false})
-        .bindPopup(`<b>${esc(x.sum)}</b>${x.desc&&x.desc!==x.sum?`<p>${esc(x.desc)}</p>`:''}<small>${x.wide?`Gjelder hele linje ${esc(x.code||'')}`:`Gjelder ${esc(p.name)}`}</small>`,{maxWidth:260,autoPanPaddingBottomRight:[20,260]})
+        .bindPopup(`<b>${esc(x.sum)}</b>${x.desc&&x.desc!==x.sum?`<p>${esc(x.desc)}</p>`:''}<small>${x.wide?`Gjelder hele linje ${esc(x.code||'')}`:`Gjelder ${esc(p.name)}`}</small>`,{maxWidth:260,autoPan:false})
         .addTo(sitLayer);
       if(k===0) sitMarkers.set(x.id,mk);
     });
   }
 }
-function showSit(id){ const mk=sitMarkers.get(id); if(!mk) return; map.setView(mk.getLatLng(),Math.max(map.getZoom(),14)); setTimeout(()=>mk.openPopup(),300); }
+function showSit(id){
+  const mk=sitMarkers.get(id); if(!mk) return;
+  // plasser trekanten i øvre del av skjermen, over kortene nederst
+  const z=Math.max(map.getZoom(),14), h=map.getSize().y;
+  const pt=map.project(mk.getLatLng(),z).add([0,h*0.22]);
+  map.setView(map.unproject(pt,z),z,{animate:true});
+  setTimeout(()=>mk.openPopup(),400);
+}
 const WARN_SVG='<svg class="i" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3 18 17H2z"/><path d="M10 8v4M10 14.5h.01"/></svg>';
 function sitRows(list,max=3){
   return list.slice(0,max).map(x=>`<button class="sitrow ${sevRank(x.sev)>=3?'crit':''}" data-sit="${esc(x.id)}">${WARN_SVG}<span>${esc(x.sum)}</span></button>`).join('')
@@ -585,7 +592,7 @@ function renderTrip(){
    <div class="row"><span>${esc(trip.from)} → ${esc(trip.to)}</span></div>
    <div class="trlegs">${parts}</div>
    ${rrb.length?`<div class="sitrow rrb">${ic('bus')}<span><b>Buss for tog</b> ${esc(rrb.map(l=>`${l.from.name} – ${l.to.name}`).join(', '))}</span></div>`:''}
-   ${sitRows(sits)}
+   ${sitRows(sits,2)}
    ${nextLeg?`<div class="next">Neste: <strong>${esc(nextLeg.code||LABEL[normMode(nextLeg.mode)])}</strong> fra ${esc(nextLeg.from.name)} kl. <strong>${hm(nextLeg.dep)}</strong> ${mins<=0?'(går nå)':mins<60?`(om ${mins} min)`:''}</div>`:''}`;
   el.hidden=false;
   $('#tripX').onclick=endTrip; $('#tripFit').onclick=fitTrip; bindSitRows(el);
