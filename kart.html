@@ -175,8 +175,15 @@ const startZ=qs.get('z')?+qs.get('z'):load('zoom',13);
 const map=L.map('map',{zoomControl:false,attributionControl:true,maxZoom:18}).setView(start,startZ);
 const dark=matchMedia('(prefers-color-scheme: dark)');
 // Kartverket: åpne, gratis kartfliser for Norge (gråtone). Mørk modus inverteres med CSS.
-L.tileLayer('https://cache.kartverket.no/v1/wmts/1.0.0/topograatone/default/webmercator/{z}/{y}/{x}.png',{
-  maxZoom:18, attribution:'© <a href="https://www.kartverket.no/">Kartverket</a> · Data: <a href="https://entur.no">Entur</a>'}).addTo(map);
+const KV=L.tileLayer('https://cache.kartverket.no/v1/wmts/1.0.0/topograatone/default/webmercator/{z}/{y}/{x}.png',{
+  maxZoom:18, attribution:'© <a href="https://www.kartverket.no/">Kartverket</a> · Data: <a href="https://entur.no">Entur</a>'});
+const OSM=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  maxZoom:18, attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · Data: <a href="https://entur.no">Entur</a>'});
+// Reserve: hvis Kartverket ikke leverer fliser, bytt til OpenStreetMap
+let kvErr=0, kvOk=0, usingOsm=false;
+KV.on('tileerror',()=>{ if(++kvErr>=4 && kvOk===0 && !usingOsm){ usingOsm=true; map.removeLayer(KV); OSM.addTo(map); } });
+KV.on('tileload',()=>{ kvOk++; });
+KV.addTo(map);
 map.attributionControl.setPrefix(false);
 
 /* ---------- Markører ---------- */

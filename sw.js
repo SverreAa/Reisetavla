@@ -1,7 +1,7 @@
 // Reisetavla service worker
 // Appskallet caches slik at appen åpner raskt og uten nett.
 // Rutedata og kjøretøyposisjoner fra Entur caches ALDRI – de skal alltid være ferske.
-const VERSION = 'reisetavla-v4';
+const VERSION = 'reisetavla-v5';
 const SHELL = ['./', 'index.html', 'kart.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
@@ -18,12 +18,12 @@ self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET') return;            // GraphQL-kall (POST) går rett til nettet
   if (url.hostname.endsWith('entur.io')) return;      // aldri cache sanntidsdata
-  if (url.hostname.includes('kartverket')) return;      // kartfliser (Kartverket) hentes rett fra nettet
+  if (url.hostname.includes('kartverket') || url.hostname.includes('openstreetmap')) return;      // kartfliser (Kartverket) hentes rett fra nettet
 
   // Sider: nett først, cache som reserve (ny versjon slår inn med en gang)
   if (e.request.mode === 'navigate') {
     const key = url.pathname.endsWith('kart.html') ? 'kart.html' : 'index.html';
-    e.respondWith(fetch(e.request)
+    e.respondWith(fetch(e.request, { cache: 'no-cache' })   // spør alltid serveren om ny versjon
       .then(r => { const copy = r.clone(); caches.open(VERSION).then(c => c.put(key, copy)); return r; })
       .catch(() => caches.match(key)));
     return;
