@@ -1,0 +1,710 @@
+<!doctype html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Reisesøk og avgangstavle for kollektivtrafikk i Norge, med data fra Entur.">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+<title>Reisetavla</title>
+<meta name="theme-color" content="#EDF1F6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0A111B" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Reisetavla">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Overpass:wght@500;700;800&display=swap">
+<style>
+/* Layout: én kolonne som en iOS-app — søkekort øverst, resultater under, delingsark nederst */
+:root{
+  --bg:#EDF1F6; --surface:#FFFFFF; --surface-2:#F3F6FA; --ink:#0E1A2B; --muted:#5A6779; --line:#D7DEE8;
+  --accent:#0B5FAD; --accent-ink:#FFFFFF; --ok:#1C8448; --warn:#A9500C; --crit:#BF2A2A;
+  --shadow:0 1px 0 rgba(14,26,43,.06),0 10px 28px -18px rgba(14,26,43,.45);
+  --m-bus:#C8352B; --m-coach:#7B3FA0; --m-rail:#1F5FAE; --m-metro:#D66A0D; --m-tram:#178454; --m-water:#0B8399; --m-air:#4E57C4; --m-foot:#8A96A6;
+  --f-display:"Overpass",ui-rounded,system-ui,-apple-system,sans-serif;
+  --f-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0A111B; --surface:#121C29; --surface-2:#1A2535; --ink:#E7EDF5; --muted:#94A2B4; --line:#263446;
+  --accent:#5DA5EE; --accent-ink:#061220; --ok:#4CC07E; --warn:#F09A4A; --crit:#F06B6B;
+  --shadow:0 1px 0 rgba(0,0,0,.4),0 10px 28px -18px rgba(0,0,0,.8);
+  --m-bus:#E4625A; --m-coach:#B07ACF; --m-rail:#5C93DB; --m-metro:#EE9246; --m-tram:#3CB27C; --m-water:#38B3C8; --m-air:#8A91E8; --m-foot:#6E7C8E;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0A111B; --surface:#121C29; --surface-2:#1A2535; --ink:#E7EDF5; --muted:#94A2B4; --line:#263446;
+  --accent:#5DA5EE; --accent-ink:#061220; --ok:#4CC07E; --warn:#F09A4A; --crit:#F06B6B;
+  --shadow:0 1px 0 rgba(0,0,0,.4),0 10px 28px -18px rgba(0,0,0,.8);
+  --m-bus:#E4625A; --m-coach:#B07ACF; --m-rail:#5C93DB; --m-metro:#EE9246; --m-tram:#3CB27C; --m-water:#38B3C8; --m-air:#8A91E8; --m-foot:#6E7C8E;
+  color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.45 var(--f-body);-webkit-text-size-adjust:100%}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
+svg.i{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.num{font-family:var(--f-display);font-variant-numeric:tabular-nums}
+
+.app{max-width:560px;margin:0 auto;padding-inline:16px;padding-block:14px 48px;display:flex;flex-direction:column;gap:14px}
+
+/* Topp */
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{font-family:var(--f-display);font-weight:800;font-size:26px;letter-spacing:-.01em;line-height:1}
+.brand span{color:var(--accent)}
+.status{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--surface);padding:6px 10px;border-radius:999px;box-shadow:var(--shadow)}
+.status i{width:8px;height:8px;border-radius:50%;background:var(--warn)}
+.status.live i{background:var(--ok);animation:pulse 2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ok) 60%,transparent)}100%{box-shadow:0 0 0 8px transparent}}
+
+.note{font-size:14px;color:var(--muted);background:var(--surface-2);border:1px dashed var(--line);padding:10px 12px;border-radius:14px}
+
+/* Lagrede reiser */
+.saved{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin-inline:-16px;padding-inline:16px;padding-block:2px}
+.saved::-webkit-scrollbar{display:none}
+.chip-saved{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;background:var(--surface);border-radius:999px;padding:8px 6px 8px 12px;font-size:14px;box-shadow:var(--shadow)}
+.chip-saved .x{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;color:var(--muted)}
+.chip-saved .x:hover{background:var(--surface-2)}
+.chip-saved b{font-weight:700}
+
+/* Søkekort */
+.sheet{background:var(--surface);border-radius:22px;padding:14px;display:grid;gap:14px;box-shadow:var(--shadow)}
+.route{display:grid;grid-template-columns:18px minmax(0,1fr) 44px;grid-template-rows:auto auto;column-gap:10px}
+.dots{grid-row:1/3;display:flex;flex-direction:column;align-items:center;padding-block:30px 22px}
+.dots .o{width:11px;height:11px;border-radius:50%;border:2.5px solid var(--ink)}
+.dots .f{width:11px;height:11px;border-radius:50%;background:var(--accent)}
+.dots .l{flex:1;width:0;border-left:2px dotted var(--line);margin-block:4px}
+.field{position:relative;min-width:0}
+.field label{display:block;font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);padding-top:6px}
+.field input{width:100%;font:inherit;font-size:17px;color:var(--ink);background:transparent;border:0;border-bottom:1px solid var(--line);padding:4px 30px 9px 0;border-radius:0}
+.field input::placeholder{color:var(--muted);opacity:.75}
+.field input:focus{outline:none;border-bottom-color:var(--accent)}
+.field .clear{position:absolute;right:0;bottom:8px;width:26px;height:26px;display:grid;place-items:center;border-radius:50%;color:var(--muted)}
+.swap{grid-column:3;grid-row:1/3;align-self:center;justify-self:end;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--surface-2);color:var(--ink)}
+.swap:active{transform:rotate(180deg);transition:transform .25s}
+
+.suggest{position:absolute;left:0;right:-40px;top:100%;margin-top:6px;z-index:20;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);max-height:52vh;overflow:auto;padding:6px}
+.suggest button{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:10px;border-radius:12px}
+.suggest button:hover,.suggest button:focus-visible{background:var(--surface-2)}
+.suggest .ic{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:var(--surface-2);color:var(--muted);flex:none}
+.suggest .ic.me{color:var(--accent)}
+.suggest b{display:block;font-weight:700;line-height:1.2}
+.suggest small{color:var(--muted);font-size:13px}
+
+.when{display:grid;gap:10px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);background:var(--surface-2);border-radius:12px;padding:3px}
+.seg button{padding:8px 4px;border-radius:9px;font-size:15px;color:var(--muted);font-weight:700}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.dt{display:flex;gap:10px}
+.dt input{flex:1;min-width:0;font:inherit;font-size:16px;color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:9px 10px}
+
+.modes{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin-inline:-14px;padding-inline:14px;padding-block:2px}
+.modes::-webkit-scrollbar{display:none}
+.mode{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;padding:8px 12px 8px 10px;border-radius:999px;border:1.5px solid var(--line);color:var(--muted);font-size:14px;font-weight:700}
+.mode svg{color:var(--muted)}
+.mode[aria-pressed="true"]{border-color:var(--mc);color:var(--ink);background:color-mix(in srgb,var(--mc) 13%,var(--surface))}
+.mode[aria-pressed="true"] svg{color:var(--mc)}
+
+/* Resultater */
+.res-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding-top:4px}
+.res-head h2{margin:0;font-family:var(--f-display);font-weight:700;font-size:19px;line-height:1.25;text-wrap:balance;min-width:0}
+.res-head p{margin:2px 0 0;color:var(--muted);font-size:14px}
+.acts{display:flex;gap:8px;flex:none}
+.act{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:var(--surface);box-shadow:var(--shadow);color:var(--ink)}
+.act[aria-pressed="true"]{color:var(--accent)}
+.act[aria-pressed="true"] svg{fill:currentColor}
+
+.list{display:grid;gap:10px;list-style:none;margin:0;padding:0}
+.trip{background:var(--surface);border-radius:20px;box-shadow:var(--shadow);overflow:hidden}
+.trip-head{display:grid;gap:10px;width:100%;text-align:left;padding:14px}
+.t1{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.t1 .dep,.t1 .arr{font-family:var(--f-display);font-weight:700;font-size:26px;font-variant-numeric:tabular-nums;line-height:1}
+.t1 .to{color:var(--muted);font-size:20px}
+.t1 .dur{margin-left:auto;font-family:var(--f-display);font-weight:700;font-size:15px;color:var(--muted);font-variant-numeric:tabular-nums}
+.late{color:var(--warn)!important}
+.was{text-decoration:line-through;color:var(--muted);font-size:14px;font-family:var(--f-display);font-variant-numeric:tabular-nums}
+.meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:14px;color:var(--muted)}
+.meta .soon{color:var(--ink);font-weight:700}
+.rt{display:inline-flex;align-items:center;gap:5px;color:var(--ok);font-weight:700;font-size:13px}
+.rt::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.bar{display:flex;gap:3px;height:8px}
+.bar span{border-radius:4px;min-width:6px;background:var(--seg)}
+.bar span.foot{background:repeating-linear-gradient(90deg,var(--m-foot) 0 3px,transparent 3px 6px);opacity:.8}
+.chips{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:3px 8px 3px 6px;border-radius:8px;background:var(--lc);color:var(--lt,#fff);font-family:var(--f-display);font-weight:800;font-size:15px;line-height:1.2;font-variant-numeric:tabular-nums}
+.pill svg{width:16px;height:16px;stroke-width:2}
+.walk{display:inline-flex;align-items:center;gap:2px;color:var(--muted);font-size:13px;font-family:var(--f-display);font-weight:700}
+.walk svg{width:16px;height:16px}
+.sep{color:var(--line);font-size:13px}
+.warnline{display:flex;gap:8px;align-items:flex-start;font-size:14px;color:var(--warn);background:color-mix(in srgb,var(--warn) 10%,var(--surface));padding:8px 10px;border-radius:12px}
+.warnline svg{margin-top:2px}
+
+.legs{list-style:none;margin:0;padding:4px 14px 16px;display:grid;gap:0;border-top:1px solid var(--line)}
+.leg{display:grid;grid-template-columns:52px 14px minmax(0,1fr);column-gap:10px;padding-top:12px}
+.leg .tm{font-family:var(--f-display);font-weight:700;font-variant-numeric:tabular-nums;font-size:15px;display:flex;flex-direction:column;justify-content:space-between}
+.leg .tm span:last-child{color:var(--muted)}
+.leg .ln{position:relative;display:flex;justify-content:center}
+.leg .ln::before{content:"";width:4px;border-radius:2px;background:var(--lc)}
+.leg.foot .ln::before{width:0;border-left:3px dotted var(--m-foot);background:none}
+.leg .tx{min-width:0;display:grid;gap:3px;font-size:15px}
+.leg .tx b{font-weight:700}
+.leg .tx small{color:var(--muted);font-size:13px}
+
+.dep-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;background:var(--surface);border-radius:16px;padding:12px 14px;box-shadow:var(--shadow)}
+.dep-row .dest b{display:block;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dep-row .dest small{color:var(--muted);font-size:13px}
+.dep-row .w{text-align:right;font-family:var(--f-display);font-weight:700;font-size:20px;font-variant-numeric:tabular-nums;line-height:1.1}
+.dep-row .w small{display:block;font-size:12px;font-weight:500;color:var(--muted)}
+.dep-row.cancel .dest b,.dep-row.cancel .w{text-decoration:line-through;color:var(--muted)}
+.cx{color:var(--crit)!important;text-decoration:none!important}
+
+.empty{background:var(--surface);border-radius:20px;padding:20px;text-align:center;color:var(--muted);box-shadow:var(--shadow);display:grid;gap:10px;justify-items:center}
+.empty b{color:var(--ink);font-size:17px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 18px;border-radius:14px;font-weight:700;background:var(--accent);color:var(--accent-ink)}
+.btn.ghost{background:var(--surface-2);color:var(--ink)}
+
+.skel{height:118px;border-radius:20px;background:linear-gradient(90deg,var(--surface) 0%,var(--surface-2) 50%,var(--surface) 100%);background-size:200% 100%;animation:sh 1.2s linear infinite}
+@keyframes sh{to{background-position:-200% 0}}
+
+footer{font-size:12px;color:var(--muted);text-align:center;padding-top:8px}
+footer a{color:inherit}
+
+/* Delingsark */
+.scrim{position:fixed;inset:0;background:color-mix(in srgb,var(--ink) 40%,transparent);z-index:50;display:flex;align-items:flex-end;justify-content:center}
+.share{width:100%;max-width:560px;background:var(--surface);border-radius:24px 24px 0 0;padding:10px 18px calc(20px + env(safe-area-inset-bottom,0px));display:grid;gap:14px;animation:up .22s ease-out}
+@keyframes up{from{transform:translateY(30px);opacity:.4}}
+.grab{width:40px;height:5px;border-radius:3px;background:var(--line);justify-self:center}
+.share h3{margin:0;font-family:var(--f-display);font-size:20px}
+.share dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:15px}
+.share dt{color:var(--muted);font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding-top:2px}
+.share dd{margin:0;min-width:0}
+.share input{width:100%;font:13px/1.4 ui-monospace,Menlo,monospace;color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:10px}
+.share .row{display:flex;gap:10px}
+.share .row .btn{flex:1}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-weight:700;font-size:14px;z-index:60}
+
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <div class="brand">Reise<span>tavla</span></div>
+    <div class="status" id="status"><i></i><span>Kobler til</span></div>
+  </div>
+
+  <p class="note" id="demoNote" hidden>Får ikke kontakt med Entur akkurat nå, så du ser eksempeldata. Sjekk nettforbindelsen og last siden på nytt.</p>
+
+  <div class="saved" id="saved" aria-label="Mine reiser" hidden></div>
+
+  <section class="sheet" aria-label="Søk">
+    <div class="route">
+      <div class="dots" aria-hidden="true"><span class="o"></span><span class="l"></span><span class="f"></span></div>
+      <div class="field">
+        <label for="from">Fra</label>
+        <input id="from" autocomplete="off" placeholder="Valgfritt · stopp eller adresse" enterkeyhint="search">
+        <button class="clear" id="fromClear" aria-label="Tøm fra" hidden><svg class="i" viewBox="0 0 20 20"><path d="M5 5l10 10M15 5 5 15"/></svg></button>
+        <div class="suggest" id="fromSug" role="listbox" hidden></div>
+      </div>
+      <button class="swap" id="swap" aria-label="Bytt fra og til"><svg class="i" viewBox="0 0 20 20"><path d="M7 3v14M7 3 4 6M7 3l3 3M13 17V3M13 17l-3-3M13 17l3-3"/></svg></button>
+      <div class="field">
+        <label for="to">Til</label>
+        <input id="to" autocomplete="off" placeholder="Valgfritt · stopp eller adresse" enterkeyhint="search">
+        <button class="clear" id="toClear" aria-label="Tøm til" hidden><svg class="i" viewBox="0 0 20 20"><path d="M5 5l10 10M15 5 5 15"/></svg></button>
+        <div class="suggest" id="toSug" role="listbox" hidden></div>
+      </div>
+    </div>
+
+    <div class="when">
+      <div class="seg" role="group" aria-label="Tidspunkt">
+        <button data-k="now" aria-pressed="true">Nå</button>
+        <button data-k="depart" aria-pressed="false">Avreise</button>
+        <button data-k="arrive" aria-pressed="false">Ankomst</button>
+      </div>
+      <div class="dt" id="dt" hidden>
+        <input type="time" id="time" aria-label="Klokkeslett">
+        <input type="date" id="date" aria-label="Dato">
+      </div>
+    </div>
+
+    <div class="modes" id="modes" role="group" aria-label="Transportmidler"></div>
+  </section>
+
+  <div class="res-head">
+    <div style="min-width:0">
+      <h2 id="title">Reiser</h2>
+      <p id="subtitle"></p>
+    </div>
+    <div class="acts">
+      <button class="act" id="saveBtn" aria-pressed="false" aria-label="Lagre reisen"><svg class="i" viewBox="0 0 20 20"><path d="M10 2.8l2.2 4.6 5 .7-3.6 3.5.9 5-4.5-2.4-4.5 2.4.9-5L2.8 8.1l5-.7z"/></svg></button>
+      <button class="act" id="shareBtn" aria-label="Del oppsettet"><svg class="i" viewBox="0 0 20 20"><path d="M10 13V2.5M6.5 6 10 2.5 13.5 6M6 9H4.5v8.5h11V9H14"/></svg></button>
+    </div>
+  </div>
+
+  <ul class="list" id="results" aria-live="polite"></ul>
+
+  <footer>Rutedata: Entur AS (NLOD-lisens) · alle operatører i Norge</footer>
+</div>
+
+<div class="scrim" id="scrim" hidden>
+  <div class="share" role="dialog" aria-modal="true" aria-labelledby="shareTitle">
+    <div class="grab"></div>
+    <h3 id="shareTitle">Del reiseoppsettet</h3>
+    <dl id="shareDl"></dl>
+    <input id="shareLink" readonly aria-label="Lenke">
+    <div class="row">
+      <button class="btn ghost" id="copyBtn">Kopier lenke</button>
+      <button class="btn" id="nativeShare" hidden>Del …</button>
+    </div>
+    <button class="btn ghost" id="closeShare">Lukk</button>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+const CLIENT = 'sverre-reisetavla';
+const JP = 'https://api.entur.io/journey-planner/v3/graphql';
+const GEO = 'https://api.entur.io/geocoder/v1/autocomplete';
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const MODES = [
+  ['bus','Buss'],['rail','Tog'],['metro','T-bane'],['tram','Trikk'],['water','Båt'],['coach','Ekspressbuss'],['air','Fly']
+];
+const LABEL = Object.fromEntries(MODES);
+const ICON = {
+  bus:'<path d="M5 3.5h10a2 2 0 0 1 2 2V14H3V5.5a2 2 0 0 1 2-2z"/><path d="M3 9.5h14M3 6.5h14"/><circle cx="6.5" cy="15.8" r="1.2"/><circle cx="13.5" cy="15.8" r="1.2"/>',
+  coach:'<path d="M2 5.5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2V14H2z"/><path d="M2 9h16M7 3.5V9M12 3.5V9"/><circle cx="5.5" cy="15.8" r="1.2"/><circle cx="14.5" cy="15.8" r="1.2"/>',
+  rail:'<rect x="5" y="2.5" width="10" height="12" rx="3"/><path d="M5 9h10"/><path d="M8 12h.01M12 12h.01"/><path d="M7 14.5 5 18M13 14.5l2 3.5"/>',
+  tram:'<path d="M7 2h6M10 2v3"/><rect x="5" y="5" width="10" height="10" rx="2.5"/><path d="M5 10h10M7 15l-2 3M13 15l2 3"/>',
+  metro:'<circle cx="10" cy="10" r="7.5"/><path d="M6.5 6.5h7M10 6.5v8"/>',
+  water:'<path d="M3 11h14l-2.2 4H5.2z"/><path d="M6 11V7.5h6l2 3.5M9 7.5V4.5"/><path d="M2 18.2c1.5 0 1.5-1 3-1s1.5 1 3 1 1.5-1 3-1 1.5 1 3 1 1.5-1 3-1"/>',
+  air:'<path d="M10 2c.8 0 1.3.7 1.3 1.6V8l5.7 3.4v1.8l-5.7-1.7v3.6l2 1.5V18L10 17l-3.3 1v-1.4l2-1.5v-3.6L3 13.2v-1.8L8.7 8V3.6C8.7 2.7 9.2 2 10 2z"/>',
+  foot:'<circle cx="11" cy="3.5" r="1.6"/><path d="M10.5 6.5 8 10l3 2-1 6M10.5 6.5l2 4 2.5 1M8 10l-2.5 1M11 12l2.5 2.5 1 3.5"/>',
+  pin:'<path d="M10 18s-5.5-5.2-5.5-9.3a5.5 5.5 0 0 1 11 0C15.5 12.8 10 18 10 18z"/><circle cx="10" cy="8.7" r="2"/>',
+  me:'<circle cx="10" cy="10" r="3"/><path d="M10 1.5v3M10 15.5v3M1.5 10h3M15.5 10h3"/><circle cx="10" cy="10" r="6.5"/>',
+  warn:'<path d="M10 3 18 17H2z"/><path d="M10 8v4M10 14.5h.01"/>'
+};
+const ic = (k, cls='i') => `<svg class="${cls}" viewBox="0 0 20 20" aria-hidden="true">${ICON[k] || ICON.bus}</svg>`;
+const modeKey = m => ICON[m] ? m : 'bus';
+
+/* ---------- Tilstand ---------- */
+const now0 = new Date();
+const pad = n => String(n).padStart(2,'0');
+const state = {
+  from: null, to: null,
+  when: 'now',
+  time: `${pad(now0.getHours())}:${pad(now0.getMinutes())}`,
+  date: `${now0.getFullYear()}-${pad(now0.getMonth()+1)}-${pad(now0.getDate())}`,
+  modes: new Set(MODES.map(m => m[0]))
+};
+let live = false, runId = 0, lastKind = null, refreshTimer = null;
+
+/* ---------- Eksempeldata (brukes når Entur ikke kan nås) ---------- */
+const DEMO_STOPS = [
+  {id:'NSR:StopPlace:59872',name:'Oslo S',sub:'Oslo',lat:59.9109,lon:10.7529,kind:'stop'},
+  {id:'NSR:StopPlace:58366',name:'Jernbanetorget',sub:'Oslo',lat:59.9118,lon:10.7500,kind:'stop'},
+  {id:'NSR:StopPlace:58404',name:'Nationaltheatret',sub:'Oslo',lat:59.9147,lon:10.7314,kind:'stop'},
+  {id:null,name:'Majorstuen',sub:'Oslo',lat:59.9297,lon:10.7149,kind:'stop'},
+  {id:null,name:'Aker brygge',sub:'Oslo',lat:59.9105,lon:10.7273,kind:'stop'},
+  {id:null,name:'Nesoddtangen brygge',sub:'Nesodden',lat:59.8701,lon:10.6555,kind:'stop'},
+  {id:null,name:'Oslo lufthavn',sub:'Ullensaker',lat:60.1934,lon:11.0976,kind:'stop'},
+  {id:null,name:'Lillehammer stasjon',sub:'Lillehammer',lat:61.1146,lon:10.4614,kind:'stop'},
+  {id:null,name:'Bodø lufthavn',sub:'Bodø',lat:67.2692,lon:14.3653,kind:'stop'}
+];
+const DEMO_LINES = {
+  bus:[['31','Ruter'],['20','Ruter'],['37','Ruter']], coach:[['FB2','Flybussen'],['NW 180','Nor-Way']],
+  rail:[['F2','Flytoget'],['R11','Vy'],['RE10','Vy']], metro:[['5','Ruter'],['2','Ruter'],['3','Ruter']],
+  tram:[['12','Ruter'],['19','Ruter'],['17','Ruter']], water:[['B10','Ruter'],['B11','Ruter']], air:[['WF 812','Widerøe'],['DY 302','Norwegian']]
+};
+const DEMO_DEST = ['Ellingsrudåsen','Sognsvann','Vestli','Lysaker','Drammen','Lillestrøm','Kolsås','Ljabru','Bekkestua','Majorstuen','Oslo lufthavn','Nesoddtangen'];
+
+function hav(a,b){const R=6371,t=x=>x*Math.PI/180,dl=t(b.lat-a.lat),dn=t(b.lon-a.lon);
+  const h=Math.sin(dl/2)**2+Math.cos(t(a.lat))*Math.cos(t(b.lat))*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
+function baseTime(){ return state.when==='now' ? new Date() : new Date(`${state.date}T${state.time}`); }
+const addMin = (d,m) => new Date(d.getTime()+m*60000);
+
+function demoTrips(from,to){
+  const sel=[...state.modes]; if(!sel.length) return [];
+  const d=hav(from,to);
+  const cand = d>300?['air','rail','coach'] : d>25?['rail','coach','bus'] : d>3?['metro','rail','bus','tram','water'] : ['tram','bus','metro'];
+  let use=cand.filter(m=>sel.includes(m)); if(!use.length) use=[sel[0]];
+  const speed={bus:28,coach:65,rail:85,metro:35,tram:18,water:22,air:480};
+  const out=[];
+  for(let i=0;i<5;i++){
+    const m=use[i%use.length], [code,auth]=DEMO_LINES[m][i%DEMO_LINES[m].length];
+    const ride=Math.max(4,Math.round(d/speed[m]*60))+(m==='air'?40:0);
+    const w1=3+(i%3), w2=2+(i%2);
+    const legs=[]; let t=addMin(baseTime(),3+i*9+(i%2)*2-w1);
+    const foot=(mins,a,b)=>{const s=t;t=addMin(t,mins);legs.push({mode:'foot',duration:mins*60,distance:mins*80,aimedStartTime:s,expectedStartTime:s,aimedEndTime:t,expectedEndTime:t,fromPlace:{name:a},toPlace:{name:b}});};
+    const ride1=(mins,mm,cd,au,a,b,delay=0,sit=null)=>{const s=t;t=addMin(t,mins);
+      legs.push({mode:mm,duration:mins*60,realtime:true,aimedStartTime:s,expectedStartTime:addMin(s,delay),aimedEndTime:t,expectedEndTime:addMin(t,delay),
+        line:{publicCode:cd,authority:{name:au}},fromPlace:{name:a,quay:{publicCode:mm==='rail'?String(2+i%3):'ABC'[i%3]}},toPlace:{name:b},
+        fromEstimatedCall:{destinationDisplay:{frontText:b}},situations:sit?[{summary:[{value:sit}]}]:[]}); if(delay) t=addMin(t,delay);};
+    foot(w1,from.name,from.name);
+    if(i===1 && ride>12){
+      const m2=use[(i+1)%use.length]===m? m : use[(i+1)%use.length];
+      const [c2,a2]=DEMO_LINES[m2][(i+1)%DEMO_LINES[m2].length];
+      const h=Math.round(ride*.55);
+      ride1(h,m,code,auth,from.name,'Nationaltheatret');
+      foot(4,'Nationaltheatret','Nationaltheatret');
+      ride1(ride-h,m2,c2,a2,'Nationaltheatret',to.name);
+    } else {
+      ride1(ride,m,code,auth,from.name,to.name, i===2?3:0, i===3?'Sporarbeid gir noe lengre reisetid denne helgen.':null);
+    }
+    foot(w2,to.name,to.name);
+    out.push(legs);
+  }
+  if(state.when==='arrive'){ // skyv slik at ankomst treffer valgt tid
+    out.forEach((legs,i)=>{const end=legs.at(-1).expectedEndTime, shift=(baseTime()-end)/60000-i*9;
+      legs.forEach(l=>['aimedStartTime','expectedStartTime','aimedEndTime','expectedEndTime'].forEach(k=>l[k]=addMin(l[k],shift)));});
+    out.reverse();
+  }
+  return out.map(legs=>({legs,aimedStartTime:legs[0].aimedStartTime,expectedStartTime:legs[0].expectedStartTime,
+    aimedEndTime:legs.at(-1).aimedEndTime,expectedEndTime:legs.at(-1).expectedEndTime,
+    duration:(legs.at(-1).expectedEndTime-legs[0].expectedStartTime)/1000}));
+}
+function demoBoard(){
+  const sel=MODES.map(m=>m[0]).filter(m=>state.modes.has(m) && !['air','coach'].includes(m));
+  if(!sel.length) return [];
+  const out=[]; let t=baseTime();
+  for(let i=0;i<14;i++){
+    t=addMin(t,1+((i*7)%4)); const m=sel[i%sel.length], [code,auth]=DEMO_LINES[m][i%DEMO_LINES[m].length];
+    const delay=i===3?2:0;
+    out.push({realtime:true,cancellation:i===6,aimedDepartureTime:t,expectedDepartureTime:addMin(t,delay),
+      quay:{publicCode:m==='rail'?String(1+i%4):'ABCD'[i%4]},destinationDisplay:{frontText:DEMO_DEST[i%DEMO_DEST.length]},
+      serviceJourney:{journeyPattern:{line:{publicCode:code,transportMode:m,authority:{name:auth}}}},situations:[]});
+  }
+  return out;
+}
+
+/* ---------- Entur ---------- */
+async function gql(query, variables){
+  const r=await fetch(JP,{method:'POST',headers:{'Content-Type':'application/json','ET-Client-Name':CLIENT},body:JSON.stringify({query,variables})});
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  const j=await r.json(); if(j.errors) throw new Error(j.errors[0].message); return j.data;
+}
+const TRIP_Q=`query($from:Location!,$to:Location!,$dateTime:DateTime,$arriveBy:Boolean,$modes:Modes){
+ trip(from:$from,to:$to,dateTime:$dateTime,arriveBy:$arriveBy,modes:$modes,numTripPatterns:6){
+  tripPatterns{ aimedStartTime expectedStartTime aimedEndTime expectedEndTime duration
+   legs{ mode duration distance realtime aimedStartTime expectedStartTime aimedEndTime expectedEndTime
+    line{ publicCode name transportMode authority{ name } presentation{ colour textColour } }
+    fromPlace{ name quay{ publicCode } } toPlace{ name quay{ publicCode } }
+    fromEstimatedCall{ cancellation destinationDisplay{ frontText } }
+    situations{ summary{ value language } } } } } }`;
+const BOARD_Q=`query($id:String!,$start:DateTime,$modes:[TransportMode]){
+ stopPlace(id:$id){ name estimatedCalls(startTime:$start,numberOfDepartures:24,timeRange:86400,whiteListedModes:$modes){
+  realtime cancellation aimedDepartureTime expectedDepartureTime quay{ publicCode }
+  destinationDisplay{ frontText }
+  serviceJourney{ journeyPattern{ line{ publicCode name transportMode authority{ name } presentation{ colour textColour } } } }
+  situations{ summary{ value } } } } }`;
+const NEAR_Q=`query($lat:Float!,$lon:Float!){ nearest(latitude:$lat,longitude:$lon,maximumDistance:1500,filterByPlaceTypes:[stopPlace],first:3){
+  edges{ node{ distance place{ ... on StopPlace{ id name latitude longitude } } } } } }`;
+
+const loc = p => p.id && p.id.startsWith('NSR:') ? {place:p.id,name:p.name} : {name:p.name,coordinates:{latitude:p.lat,longitude:p.lon}};
+const allModes = () => state.modes.size===MODES.length;
+const dateTimeVar = () => state.when==='now' ? null : new Date(`${state.date}T${state.time}`).toISOString();
+
+async function fetchTrips(from,to){
+  if(!live) return demoTrips(from,to);
+  const modes = allModes()?null:{accessMode:'foot',egressMode:'foot',transportModes:[...state.modes].map(m=>({transportMode:m}))};
+  const d=await gql(TRIP_Q,{from:loc(from),to:loc(to),dateTime:dateTimeVar(),arriveBy:state.when==='arrive',modes});
+  return d.trip.tripPatterns;
+}
+async function resolveStop(p){
+  if(p.id && p.id.startsWith('NSR:StopPlace')) return p;
+  if(!live) return p;
+  const d=await gql(NEAR_Q,{lat:p.lat,lon:p.lon});
+  const n=d.nearest?.edges?.find(e=>e.node.place?.id)?.node;
+  if(!n) throw new Error('Fant ingen stopp i nærheten');
+  return {id:n.place.id,name:n.place.name,lat:n.place.latitude,lon:n.place.longitude,dist:Math.round(n.distance)};
+}
+async function fetchBoard(stop){
+  if(!live) return demoBoard();
+  const d=await gql(BOARD_Q,{id:stop.id,start:dateTimeVar(),modes:allModes()?null:[...state.modes]});
+  return d.stopPlace?.estimatedCalls||[];
+}
+async function geocode(q){
+  if(!live){const s=q.toLowerCase();return DEMO_STOPS.filter(p=>p.name.toLowerCase().includes(s)||p.sub.toLowerCase().includes(s)).slice(0,7);}
+  const r=await fetch(`${GEO}?text=${encodeURIComponent(q)}&size=7&lang=no`,{headers:{'ET-Client-Name':CLIENT}});
+  const j=await r.json();
+  return (j.features||[]).map(f=>({id:f.properties.id,name:f.properties.name,sub:[f.properties.locality,f.properties.county].filter(Boolean).join(', '),
+    lat:f.geometry.coordinates[1],lon:f.geometry.coordinates[0],kind:String(f.properties.id).startsWith('NSR:')?'stop':'addr'}));
+}
+function myPos(){
+  return new Promise((res,rej)=>{
+    if(!navigator.geolocation) return rej(new Error('Posisjon er ikke tilgjengelig'));
+    navigator.geolocation.getCurrentPosition(p=>res({id:null,name:'Min posisjon',lat:p.coords.latitude,lon:p.coords.longitude,kind:'me'}),
+      ()=>rej(new Error('Fikk ikke tilgang til posisjonen din')),{enableHighAccuracy:true,timeout:8000,maximumAge:60000});
+  });
+}
+
+/* ---------- Formatering ---------- */
+const hm = d => new Date(d).toLocaleTimeString('nb-NO',{hour:'2-digit',minute:'2-digit'});
+const minsTo = d => Math.round((new Date(d)-Date.now())/60000);
+function dur(sec){const m=Math.round(sec/60); if(m<60) return m+' min'; const h=Math.floor(m/60),r=m%60; return h+' t'+(r?' '+r+' min':'');}
+function rel(d){const m=minsTo(d); if(m<=0) return 'Går nå'; if(m<60) return 'om '+m+' min'; return '';}
+const late = (a,e) => e && a && (new Date(e)-new Date(a))>=60000;
+const lineStyle = (line,mode) => {
+  const c=line?.presentation?.colour?('#'+line.presentation.colour):`var(--m-${modeKey(mode)})`;
+  const t=line?.presentation?.textColour?('#'+line.presentation.textColour):'#fff';
+  return `--lc:${c};--lt:${t}`;
+};
+const pill = (line,mode) => `<span class="pill" style="${lineStyle(line,mode)}">${ic(modeKey(mode))}${esc(line?.publicCode||LABEL[mode]||'')}</span>`;
+
+/* ---------- Rendering ---------- */
+const res=$('#results');
+function skeleton(){res.innerHTML='<li class="skel"></li><li class="skel"></li><li class="skel"></li>';}
+function emptyMsg(title,text,btn){
+  res.innerHTML=`<li class="empty"><b>${esc(title)}</b><span>${esc(text)}</span>${btn?`<button class="btn ghost" id="emptyBtn">${esc(btn)}</button>`:''}</li>`;
+  if(btn) $('#emptyBtn').onclick=run;
+}
+function renderTrips(list){
+  if(!list.length){emptyMsg('Ingen reiser funnet','Prøv flere transportmidler eller et annet tidspunkt.');return;}
+  res.innerHTML=list.map((p,i)=>{
+    const transit=p.legs.filter(l=>l.mode!=='foot');
+    const changes=Math.max(0,transit.length-1);
+    const first=transit[0]||p.legs[0];
+    const isLate=late(first.aimedStartTime,first.expectedStartTime);
+    const total=p.legs.reduce((s,l)=>s+(l.duration||0),0)||1;
+    const bar=p.legs.map(l=>`<span class="${l.mode==='foot'?'foot':''}" style="flex:${Math.max(l.duration,60)/total};--seg:${l.mode==='foot'?'transparent':lineStyle(l.line,l.mode).split(';')[0].slice(5)}"></span>`).join('');
+    const chips=p.legs.map(l=>l.mode==='foot'
+      ? (l.duration>=120?`<span class="walk">${ic('foot')}${Math.round(l.duration/60)}</span>`:'')
+      : pill(l.line,l.mode)).filter(Boolean).join('<span class="sep" aria-hidden="true">›</span>');
+    const sits=[...new Set(transit.flatMap(l=>(l.situations||[]).map(s=>s.summary?.find?.(x=>x.language==='no'||x.language==='nob')?.value||s.summary?.[0]?.value).filter(Boolean)))];
+    const cancelled=transit.some(l=>l.fromEstimatedCall?.cancellation);
+    const anyRt=transit.some(l=>l.realtime);
+    const r=rel(p.expectedStartTime);
+    return `<li class="trip">
+      <button class="trip-head" aria-expanded="false" aria-controls="legs${i}">
+        <div class="t1">
+          ${isLate?`<span class="was">${hm(p.aimedStartTime)}</span>`:''}
+          <span class="dep ${isLate?'late':''}">${hm(p.expectedStartTime)}</span><span class="to">–</span>
+          <span class="arr">${hm(p.expectedEndTime)}</span>
+          <span class="dur">${dur(p.duration)}</span>
+        </div>
+        <div class="meta">${r?`<span class="soon">${r}</span>`:''}<span>${changes?changes+' bytte'+(changes>1?'r':''):'Direkte'}</span>${anyRt?'<span class="rt">Sanntid</span>':''}${first.fromPlace?.quay?.publicCode?`<span>${first.mode==='rail'?'Spor':'Plattform'} ${esc(first.fromPlace.quay.publicCode)}</span>`:''}</div>
+        <div class="bar" aria-hidden="true">${bar}</div>
+        <div class="chips">${chips}</div>
+        ${cancelled?`<div class="warnline" style="color:var(--crit)">${ic('warn')}<span>Del av reisen er innstilt.</span></div>`:''}
+        ${sits.map(s=>`<div class="warnline">${ic('warn')}<span>${esc(s)}</span></div>`).join('')}
+      </button>
+      <ol class="legs" id="legs${i}" hidden>${p.legs.map(legRow).join('')}</ol>
+    </li>`;
+  }).join('');
+  res.querySelectorAll('.trip-head').forEach(b=>b.onclick=()=>{
+    const open=b.getAttribute('aria-expanded')==='true'; b.setAttribute('aria-expanded',!open); b.nextElementSibling.hidden=open;});
+}
+function legRow(l){
+  if(l.mode==='foot'){
+    const m=Math.round((l.duration||0)/60); if(m<1) return '';
+    return `<li class="leg foot"><div class="tm"><span>${hm(l.expectedStartTime)}</span><span></span></div><div class="ln"></div>
+      <div class="tx"><span>${ic('foot')} Gå ${m} min${l.distance?` · ${Math.round(l.distance/10)*10} m`:''}</span><small>Til ${esc(l.toPlace?.name)}</small></div></li>`;
+  }
+  const q=l.fromPlace?.quay?.publicCode, isLate=late(l.aimedStartTime,l.expectedStartTime);
+  return `<li class="leg" style="${lineStyle(l.line,l.mode)}">
+    <div class="tm"><span class="${isLate?'late':''}">${hm(l.expectedStartTime)}</span><span>${hm(l.expectedEndTime)}</span></div><div class="ln"></div>
+    <div class="tx">
+      <div>${pill(l.line,l.mode)} <b>mot ${esc(l.fromEstimatedCall?.destinationDisplay?.frontText||l.toPlace?.name)}</b></div>
+      <span>Fra ${esc(l.fromPlace?.name)}${q?`, ${l.mode==='rail'?'spor':'plattform'} ${esc(q)}`:''}</span>
+      <span>Av på ${esc(l.toPlace?.name)}</span>
+      <small>${esc(LABEL[l.mode]||l.mode)} · ${esc(l.line?.authority?.name||'')} ${l.realtime?'· sanntid':'· rutetid'}${isLate?` · ${minsTo(l.expectedStartTime)-minsTo(l.aimedStartTime)} min forsinket`:''}</small>
+    </div></li>`;
+}
+function renderBoard(calls){
+  if(!calls.length){emptyMsg('Ingen avganger','Ingen avganger med valgte transportmidler i tidsrommet.');return;}
+  res.innerHTML=calls.map(c=>{
+    const line=c.serviceJourney?.journeyPattern?.line||{}, mode=line.transportMode||'bus';
+    const m=minsTo(c.expectedDepartureTime), isLate=late(c.aimedDepartureTime,c.expectedDepartureTime);
+    const w = c.cancellation ? `<span class="cx">Innstilt</span>` : (m<=0?'nå':m<15?`${m} min`:hm(c.expectedDepartureTime));
+    const sub = c.cancellation ? hm(c.aimedDepartureTime) : (m<15&&m>0?hm(c.expectedDepartureTime):(isLate?`var ${hm(c.aimedDepartureTime)}`:''));
+    return `<li class="dep-row ${c.cancellation?'cancel':''}">${pill(line,mode)}
+      <div class="dest"><b>${esc(c.destinationDisplay?.frontText)}</b><small>${c.quay?.publicCode?`${mode==='rail'?'Spor':'Plattform'} ${esc(c.quay.publicCode)} · `:''}${esc(line.authority?.name||LABEL[mode]||'')}${c.realtime?' · <span class="rt">Sanntid</span>':''}</small></div>
+      <div class="w ${isLate&&!c.cancellation?'late':''}">${w}${sub?`<small>${sub}</small>`:''}</div></li>`;
+  }).join('');
+}
+
+/* ---------- Søk ---------- */
+function whenText(){
+  if(state.when==='now') return 'avreise nå';
+  const d=new Date(`${state.date}T${state.time}`), today=new Date().toDateString()===d.toDateString();
+  return `${state.when==='arrive'?'ankomst':'avreise'} ${today?'':d.toLocaleDateString('nb-NO',{weekday:'short',day:'numeric',month:'short'})+' '}${state.time}`;
+}
+function modesText(){ return allModes()?'Alle transportmidler':[...state.modes].map(m=>LABEL[m]).join(', ')||'Ingen transportmidler valgt'; }
+
+async function run(){
+  const id=++runId; skeleton(); clearInterval(refreshTimer);
+  const set=(t,s)=>{$('#title').textContent=t;$('#subtitle').textContent=s;};
+  try{
+    let from=state.from, to=state.to;
+    if(!state.modes.size){ set('Velg transportmiddel','');emptyMsg('Ingen transportmidler valgt','Slå på minst ett transportmiddel over.');return; }
+    if(!from && !to){
+      set('Avganger nær deg',modesText());
+      try{ from=await myPos(); }catch(e){ if(id!==runId) return;
+        set('Hvor skal du?','');emptyMsg('Velg FRA, TIL eller begge','Kun FRA gir avgangstavle. Kun TIL bruker posisjonen din som start. Begge gir reiseforslag.');return; }
+    }
+    if(from && !to){
+      const stop=await resolveStop(from); if(id!==runId) return;
+      set(`Avganger fra ${stop.name}`,`${whenText()} · ${modesText()}${stop.dist?` · ${stop.dist} m unna`:''}`);
+      renderBoard(await fetchBoard(stop)); lastKind='board';
+    } else {
+      if(!from){ try{ from=await myPos(); }catch(e){ if(id!==runId) return; set(`Til ${to.name}`,''); emptyMsg('Hvor reiser du fra?','Velg FRA, eller gi tilgang til posisjonen din.');return; } }
+      set(`${from.name} → ${to.name}`,`${whenText()} · ${modesText()}`);
+      const list=await fetchTrips(from,to); if(id!==runId) return;
+      renderTrips(list); lastKind='trip';
+    }
+    if(state.when==='now') refreshTimer=setInterval(()=>{ if(!document.hidden && $('#scrim').hidden) run(); }, live?30000:60000);
+  }catch(e){
+    if(id!==runId) return;
+    emptyMsg('Fikk ikke hentet reiser',`${e.message}. Sjekk nettforbindelsen og prøv igjen.`,'Prøv igjen');
+  }
+  syncSaveBtn();
+}
+
+/* ---------- Deling (lenke med hele oppsettet) ---------- */
+const encPlace = p => p.id && p.id.startsWith('NSR:') ? p.id : `${p.lat.toFixed(5)},${p.lon.toFixed(5)}`;
+function decPlace(v,name){
+  if(!v) return null;
+  if(v.startsWith('NSR:')) return {id:v,name:name||v,...(DEMO_STOPS.find(s=>s.id===v)||{}),...(name?{name}:{})};
+  const [a,b]=v.split(',').map(Number); if(isNaN(a)||isNaN(b)) return null;
+  return {id:null,name:name||'Valgt sted',lat:a,lon:b};
+}
+function toParams(){
+  const p=new URLSearchParams();
+  if(state.from && state.from.kind!=='me'){p.set('fra',encPlace(state.from));p.set('fn',state.from.name);}
+  if(state.to && state.to.kind!=='me'){p.set('til',encPlace(state.to));p.set('tn',state.to.name);}
+  if(state.when!=='now'){p.set('k',state.when==='arrive'?'ankomst':'avreise');p.set('t',state.time);p.set('d',state.date);}
+  if(!allModes()) p.set('m',[...state.modes].join(','));
+  return p.toString();
+}
+function fromParams(qs){
+  const p=new URLSearchParams(qs); if(![...p.keys()].length) return false;
+  state.from=decPlace(p.get('fra'),p.get('fn')); state.to=decPlace(p.get('til'),p.get('tn'));
+  const k=p.get('k'); state.when=k==='ankomst'?'arrive':k==='avreise'?'depart':'now';
+  if(p.get('t')) state.time=p.get('t'); if(p.get('d')) state.date=p.get('d');
+  if(p.get('m')){const s=p.get('m').split(',').filter(m=>LABEL[m]); if(s.length) state.modes=new Set(s);}
+  return true;
+}
+function shareUrl(){
+  const base=location.protocol.startsWith('http')?location.origin+location.pathname:'https://din-side.no/reisetavla/';
+  const q=toParams(); return q?`${base}?${q}`:base;
+}
+function openShare(){
+  const rows=[['Fra',state.from?.name||'Valgfritt'],['Til',state.to?.name||'Valgfritt'],['Tid',whenText()],['Med',modesText()]];
+  $('#shareDl').innerHTML=rows.map(([a,b])=>`<dt>${a}</dt><dd>${esc(b)}</dd>`).join('');
+  $('#shareLink').value=shareUrl();
+  $('#nativeShare').hidden=!navigator.share;
+  $('#scrim').hidden=false; $('#copyBtn').focus();
+}
+function toast(t){const el=$('#toast');el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,1800);}
+$('#shareBtn').onclick=openShare;
+$('#closeShare').onclick=()=>$('#scrim').hidden=true;
+$('#scrim').onclick=e=>{if(e.target.id==='scrim')$('#scrim').hidden=true;};
+$('#copyBtn').onclick=()=>{
+  const v=$('#shareLink').value;
+  navigator.clipboard?.writeText(v).then(()=>toast('Lenken er kopiert'),()=>{$('#shareLink').select();toast('Marker og kopier lenken');})
+    ?? ($('#shareLink').select(),toast('Marker og kopier lenken'));
+};
+$('#nativeShare').onclick=()=>navigator.share({title:'Reisetavla',text:`${state.from?.name||'Min posisjon'} → ${state.to?.name||'avganger'}`,url:shareUrl()}).catch(()=>{});
+
+/* ---------- Mine reiser (lokalt på enheten) ---------- */
+const KEY='reisetavla.saved';
+function loadSaved(){try{return JSON.parse(localStorage.getItem(KEY))||[];}catch{return [];}}
+function storeSaved(a){try{localStorage.setItem(KEY,JSON.stringify(a));}catch{}}
+let saved=[];
+function renderSaved(){
+  const el=$('#saved'); el.hidden=!saved.length;
+  el.innerHTML=saved.map((s,i)=>`<span class="chip-saved"><button data-i="${i}" class="go"><b>${esc(s.name)}</b></button><button class="x" data-x="${i}" aria-label="Fjern ${esc(s.name)}"><svg class="i" viewBox="0 0 20 20"><path d="M6 6l8 8M14 6l-8 8"/></svg></button></span>`).join('');
+  el.querySelectorAll('.go').forEach(b=>b.onclick=()=>{fromParams(saved[b.dataset.i].q);syncUI();run();});
+  el.querySelectorAll('.x').forEach(b=>b.onclick=()=>{saved.splice(b.dataset.x,1);storeSaved(saved);renderSaved();syncSaveBtn();});
+}
+function syncSaveBtn(){const q=toParams();$('#saveBtn').setAttribute('aria-pressed',saved.some(s=>s.q===q));}
+$('#saveBtn').onclick=()=>{
+  const q=toParams(), i=saved.findIndex(s=>s.q===q);
+  if(i>=0){saved.splice(i,1);toast('Fjernet fra Mine reiser');}
+  else{saved.unshift({name:`${state.from?.name||'Min posisjon'} → ${state.to?.name||'avganger'}`,q});toast('Lagret i Mine reiser');}
+  storeSaved(saved); renderSaved(); syncSaveBtn();
+};
+
+/* ---------- Skjemakontroller ---------- */
+function syncUI(){
+  $('#from').value=state.from?.name||''; $('#to').value=state.to?.name||'';
+  $('#fromClear').hidden=!state.from; $('#toClear').hidden=!state.to;
+  document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.k===state.when));
+  $('#dt').hidden=state.when==='now'; $('#time').value=state.time; $('#date').value=state.date;
+  document.querySelectorAll('.mode').forEach(b=>b.setAttribute('aria-pressed',state.modes.has(b.dataset.m)));
+  syncSaveBtn();
+}
+$('#modes').innerHTML=MODES.map(([k,l])=>`<button class="mode" data-m="${k}" style="--mc:var(--m-${k})" aria-pressed="true">${ic(k)}${l}</button>`).join('');
+document.querySelectorAll('.mode').forEach(b=>b.onclick=()=>{
+  const m=b.dataset.m; state.modes.has(m)?state.modes.delete(m):state.modes.add(m); syncUI(); debounceRun();});
+document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{state.when=b.dataset.k;syncUI();run();});
+$('#time').onchange=e=>{state.time=e.target.value||state.time;run();};
+$('#date').onchange=e=>{state.date=e.target.value||state.date;run();};
+$('#swap').onclick=()=>{[state.from,state.to]=[state.to,state.from];syncUI();run();};
+let rt; const debounceRun=()=>{clearTimeout(rt);rt=setTimeout(run,350);};
+
+function setupField(key){
+  const input=$('#'+key), sug=$('#'+key+'Sug'), clear=$('#'+key+'Clear'); let t, seq=0, items=[];
+  const show=list=>{
+    items=[{id:null,name:'Min posisjon',sub:'Bruk GPS',kind:'me'},...list];
+    sug.innerHTML=items.map((p,i)=>`<button role="option" data-i="${i}"><span class="ic ${p.kind==='me'?'me':''}">${ic(p.kind==='me'?'me':p.kind==='stop'?'bus':'pin')}</span><span><b>${esc(p.name)}</b><small>${esc(p.sub||'')}</small></span></button>`).join('');
+    sug.hidden=false;
+    sug.querySelectorAll('button').forEach(b=>b.onmousedown=e=>e.preventDefault());
+    sug.querySelectorAll('button').forEach(b=>b.onclick=async()=>{
+      const p=items[b.dataset.i]; sug.hidden=true;
+      if(p.kind==='me'){ try{ state[key]=await myPos(); }catch(e){ toast(e.message); return; } }
+      else state[key]=p;
+      syncUI(); input.blur(); run();
+    });
+  };
+  input.addEventListener('focus',()=>{ if(!input.value) show(live?[]:DEMO_STOPS.slice(0,6)); });
+  input.addEventListener('input',()=>{
+    clearTimeout(t); const q=input.value.trim();
+    if(q.length<2){show(live?[]:DEMO_STOPS.slice(0,6));return;}
+    t=setTimeout(async()=>{const my=++seq; try{const r=await geocode(q); if(my===seq) show(r);}catch{}},220);
+  });
+  input.addEventListener('blur',()=>setTimeout(()=>{sug.hidden=true; input.value=state[key]?.name||'';},150));
+  input.addEventListener('keydown',e=>{ if(e.key==='Escape'){sug.hidden=true;input.blur();}
+    if(e.key==='Enter' && items[1]) sug.querySelectorAll('button')[1]?.click(); });
+  clear.onclick=()=>{state[key]=null;syncUI();run();};
+}
+setupField('from'); setupField('to');
+
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden && state.when==='now') run(); });
+
+/* ---------- Oppstart ---------- */
+async function detect(){
+  try{
+    const c=new AbortController(); const tm=setTimeout(()=>c.abort(),4000);
+    const r=await fetch(`${GEO}?text=oslo&size=1`,{headers:{'ET-Client-Name':CLIENT},signal:c.signal});
+    clearTimeout(tm); live=r.ok;
+  }catch{ live=false; }
+  const st=$('#status'); st.classList.toggle('live',live); st.querySelector('span').textContent=live?'Live · Entur':'Eksempeldata';
+  $('#demoNote').hidden=live;
+}
+(async()=>{
+  await detect();
+  saved = loadSaved(); if(!saved.length && !live) saved=[{name:'Eksempel: Til flyet',q:'fra=NSR%3AStopPlace%3A58404&fn=Nationaltheatret&til=60.19340%2C11.09760&tn=Oslo+lufthavn&m=rail%2Ccoach'}];
+  const fromUrl=fromParams(location.search);
+  if(!fromUrl && !live){ state.from=DEMO_STOPS[2]; state.to=DEMO_STOPS[6]; }
+  syncUI(); renderSaved(); run();
+})();
+})();
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
