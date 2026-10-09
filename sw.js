@@ -1,7 +1,7 @@
 // Reisetavla service worker
 // Appskallet caches slik at appen åpner raskt og uten nett.
 // Rutedata og kjøretøyposisjoner fra Entur caches ALDRI – de skal alltid være ferske.
-const VERSION = 'reisetavla-v10';
+const VERSION = 'reisetavla-v11';
 const SHELL = ['./', 'index.html', 'kart.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {

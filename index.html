@@ -171,7 +171,6 @@ svg.i{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-widt
 
 .maprow{padding-top:14px;list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .maprow .btn{width:100%;padding-inline:10px}
-.maprow .price{grid-column:1/-1;text-decoration:none}
 .maprow svg{width:18px;height:18px}
 .dep-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;background:var(--surface);border-radius:16px;padding:12px 14px;box-shadow:var(--shadow)}
 .dep-row .dest b{display:block;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -540,7 +539,7 @@ function renderTrips(list){
         ${rrb.length?`<div class="warnline rrbline">${ic('bus')}<span><b>Buss for tog</b> ${esc(rrb.map(l=>`${l.fromPlace?.name} – ${l.toPlace?.name}`).join(', '))}</span></div>`:''}
         ${sits.map(([t,sev])=>`<div class="warnline ${sevRank(sev)>=3?'crit':''}">${ic('warn')}<span>${esc(t)}</span></div>`).join('')}
       </button>
-      <ol class="legs" id="legs${i}" hidden>${p.legs.map(legRow).join('')}${live?`<li class="maprow"><a class="btn price" href="${esc(priceLink(p))}" target="_blank" rel="noopener">${TICKET_SVG} Pris og billett hos Entur</a><button class="btn ghost" data-map="${i}">${MAP_SVG} Vis på kart</button><button class="btn ghost" data-sharetrip="${i}">${SHARE_SVG} Del reisen</button></li>`:''}</ol>
+      <ol class="legs" id="legs${i}" hidden>${p.legs.map(legRow).join('')}${live?`<li class="maprow"><button class="btn ghost" data-map="${i}">${MAP_SVG} Vis på kart</button><button class="btn ghost" data-sharetrip="${i}">${SHARE_SVG} Del reisen</button></li>`:''}</ol>
     </li>`;
   }).join('');
   lastTrips=list;
@@ -552,23 +551,6 @@ function renderTrips(list){
 let lastTrips=[];
 const MAP_SVG='<svg class="i" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 3.5 2.5 5.5v11l4.5-2 6 2 4.5-2v-11l-4.5 2z"/><path d="M7 3.5v11M13 5.5v11"/></svg>';
 const SHARE_SVG='<svg class="i" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 13V2.5M6.5 6 10 2.5 13.5 6M6 9H4.5v8.5h11V9H14"/></svg>';
-const TICKET_SVG='<svg class="i" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6.5V5h14v1.5a2 2 0 0 0 0 4V15H3v-4.5a2 2 0 0 0 0-4z"/><path d="M12 5v10" stroke-dasharray="1.5 2"/></svg>';
-// Entur har ingen åpen pris-API. Vi lenker til Enturs eget reisesøk (åpner Entur-appen hvis den er installert),
-// med samme fra/til og avgangstid, slik at riktig pris – inkl. overgang og soner – vises der.
-function priceLink(p){
-  const u=new URLSearchParams();
-  const legs=p.legs||[], a=legs[0]?.fromPlace, b=legs.at(-1)?.toPlace;
-  const put=(pre,st,pl)=>{ if(st?.id?.startsWith('NSR:StopPlace')) u.set(pre+'Id',st.id); else if(pl?.latitude!=null){ u.set(pre+'Lat',pl.latitude.toFixed(6)); u.set(pre+'Lon',pl.longitude.toFixed(6)); } };
-  put('start',state.from,a); put('stop',state.to,b);
-  u.set('date',String(new Date(p.expectedStartTime).getTime()-60000));
-  u.set('timepickerMode','departAfter');
-  if(!allModes()){
-    const map={bus:'bus',coach:'bus',tram:'tram',rail:'rail',metro:'metro',water:'water'};
-    const tm=[...new Set([...state.modes].map(m=>map[m]).filter(Boolean))];
-    if(tm.length) u.set('transportModes',tm.join(','));
-  }
-  return 'https://entur.no/travel-result?'+u.toString().replace(/%3A/g,':').replace(/%2C/g,',');
-}
 function tripPayload(p){
   const pl=x=>({name:x?.name,lat:x?.latitude,lon:x?.longitude});
   const legs=p.legs.filter(l=>l.fromPlace?.latitude!=null&&l.toPlace?.latitude!=null).map(l=>({
