@@ -3,7 +3,8 @@
 Reisesøk og avgangstavle for kollektivtrafikk i Norge. Data fra Entur (NLOD).
 
 ## Filer
-- `index.html` – hele appen
+- `index.html` – reisesøk og avgangstavle
+- `kart.html` – kart med kjøretøy i sanntid (GPS fra Entur + beregnede posisjoner der operatøren ikke sender GPS, f.eks. Ruter)
 - `manifest.webmanifest` – navn, ikon og fullskjerm når den legges på Hjem-skjerm
 - `sw.js` – service worker: appen åpner raskt og uten nett; rutedata hentes alltid ferskt
 - `icons/` – app-ikoner

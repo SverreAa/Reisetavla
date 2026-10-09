@@ -59,6 +59,9 @@ svg.i{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-widt
 .top{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .brand{font-family:var(--f-display);font-weight:800;font-size:26px;letter-spacing:-.01em;line-height:1}
 .brand span{color:var(--accent)}
+.topr{display:flex;align-items:center;gap:8px}
+.maplink{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--ink);background:var(--surface);padding:6px 11px 6px 9px;border-radius:999px;box-shadow:var(--shadow);text-decoration:none}
+.maplink svg{width:17px;height:17px;color:var(--accent)}
 .status{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--surface);padding:6px 10px;border-radius:999px;box-shadow:var(--shadow)}
 .status i{width:8px;height:8px;border-radius:50%;background:var(--warn)}
 .status.live i{background:var(--ok);animation:pulse 2s infinite}
@@ -199,7 +202,10 @@ footer a{color:inherit}
 <div class="app">
   <div class="top">
     <div class="brand">Reise<span>tavla</span></div>
-    <div class="status" id="status"><i></i><span>Kobler til</span></div>
+    <div class="topr">
+      <a class="maplink" href="kart.html" aria-label="Kart over kjøretøy i sanntid"><svg class="i" viewBox="0 0 20 20"><path d="M7 3.5 2.5 5.5v11l4.5-2 6 2 4.5-2v-11l-4.5 2z"/><path d="M7 3.5v11M13 5.5v11"/></svg><span>Kart</span></a>
+      <div class="status" id="status"><i></i><span>Kobler til</span></div>
+    </div>
   </div>
 
   <p class="note" id="demoNote" hidden>Får ikke kontakt med Entur akkurat nå, så du ser eksempeldata. Sjekk nettforbindelsen og last siden på nytt.</p>
