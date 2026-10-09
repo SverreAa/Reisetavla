@@ -11,7 +11,7 @@
 - `Root` sets `data-theme` on a div, so the dark tokens are also declared on `[data-theme="dark"]` (not only `:root[...]`), plus a `[data-theme="light"]` block.
 - `cfg.provider = Root` wraps every preview; designs must wrap in Root too (conventions.md says so).
 - Windows/PowerShell: run `npm.cmd`/`npx.cmd` (npm.ps1 is blocked by execution policy). esbuild's postinstall is blocked by npm's install-scripts gate but the platform binary works anyway.
-- No git on this machine at first sync — nothing was committed.
+- Git lives at `C:\Program Files\Git\cmd` (installed during the first sync; sessions started earlier don't have it on PATH). Repo-local user.name/email are set.
 
 ## Known render warns
 - none outstanding. 13 components use `cardMode: "column"` (GRID_OVERFLOW remedy); BottomSheet uses `cardMode: "single"`.
