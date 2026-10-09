@@ -87,6 +87,7 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 .card{background:var(--surface);border-radius:20px;box-shadow:var(--shadow);padding:14px;display:grid;gap:8px}
 .card .h{display:flex;align-items:center;gap:10px}
 .card .h b{font-family:var(--f-display);font-size:18px;font-weight:700;line-height:1.2;min-width:0}
+.card .x+.x{margin-left:0}
 .card .x{margin-left:auto;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:var(--surface-2);flex:none}
 .card .row{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:14px;color:var(--muted)}
 .card .row strong{color:var(--ink);font-weight:700}
@@ -105,6 +106,31 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 .veh.dot{min-width:11px;width:11px;height:11px;padding:0;border-radius:50%;font-size:0}
 .veh.dot .dir{display:none}
 .veh.sel{box-shadow:0 0 0 3px var(--ink),0 2px 10px rgba(0,0,0,.45);z-index:2}
+.me-on svg{color:var(--accent)}
+#map.dim .veh:not(.hl){opacity:.22;filter:grayscale(.7)}
+.veh.hl{transform:translate(-50%,-50%) scale(1.22)}
+.m-bus{--mc:var(--m-bus)} .m-coach{--mc:var(--m-coach)} .m-rail{--mc:var(--m-rail)} .m-metro{--mc:var(--m-metro)} .m-tram{--mc:var(--m-tram)} .m-water{--mc:var(--m-water)} .m-air{--mc:var(--m-air)}
+path.rcase{stroke:var(--surface);stroke-opacity:.95}
+path.rt{stroke:var(--mc);stroke-opacity:.95}
+path.rt.done{stroke-opacity:.35}
+path.walk{stroke:var(--muted);stroke-opacity:.9}
+path.stp{stroke:var(--mc);fill:var(--surface);fill-opacity:1;stroke-width:2.5}
+path.stp.past{stroke:var(--muted);fill:var(--line);opacity:.75}
+path.stp.end{fill:var(--mc)}
+path.acc{fill:var(--accent);fill-opacity:.12;stroke:var(--accent);stroke-opacity:.35;stroke-width:1}
+.leaflet-tooltip.stl{background:var(--surface);color:var(--ink);border:0;box-shadow:var(--shadow);font:700 12px/1.25 var(--f-body);padding:4px 7px;border-radius:8px;white-space:nowrap}
+.leaflet-tooltip.stl::before{display:none}
+.leaflet-tooltip.stl .num{font-family:var(--f-display);font-variant-numeric:tabular-nums;margin-right:4px}
+.nx{list-style:none;margin:0;padding:0;display:grid;gap:5px;font-size:14px}
+.nx li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:baseline}
+.nx .num{font-family:var(--f-display);font-weight:700;font-variant-numeric:tabular-nums}
+.nx s{color:var(--muted);font-size:12px;margin-left:4px}
+.nx .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trlegs{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.walkc{display:inline-flex;gap:2px;align-items:center;color:var(--muted);font:700 13px var(--f-display)}
+.walkc svg{width:16px;height:16px}
+.sepc{color:var(--muted);font-size:13px}
+.next{font-size:14px;color:var(--muted)} .next strong{color:var(--ink)}
 .me{width:16px;height:16px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px #fff,0 0 0 9px color-mix(in srgb,var(--accent) 25%,transparent);transform:translate(-50%,-50%)}
 
 .toast{position:fixed;z-index:1100;left:50%;top:calc(66px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 14px;border-radius:999px;font-weight:700;font-size:14px;max-width:calc(100% - 32px);text-align:center}
@@ -125,6 +151,7 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stro
 </div>
 
 <div class="panel">
+  <div class="card" id="tripCard" hidden></div>
   <div class="card" id="card" hidden></div>
   <div class="sheet">
     <div class="chips" id="chips" role="group" aria-label="Transportmidler"></div>
@@ -190,27 +217,27 @@ map.attributionControl.setPrefix(false);
 const vehicles=new Map(); // key -> {marker, data, est, from, to, t0}
 let selected=null;
 function iconHtml(v,compact){
-  const m=v.mode, cls=['veh',v.est?'est':'',compact?'dot':'',selected===v.key?'sel':''].join(' ');
-  const dir=v.bearing!=null&&!compact?`<i class="dir" style="--b:${Math.round(v.bearing)}deg"></i>`:'';
+  const m=v.mode, hl=focusSjs.has(v.sj), cls=['veh',v.est?'est':'',compact&&!hl?'dot':'',selected===v.key?'sel':'',hl?'hl':''].join(' ');
+  const dir=v.bearing!=null&&(!compact||hl)?`<i class="dir" style="--b:${Math.round(v.bearing)}deg"></i>`:'';
   return `<div class="${cls}" style="--mc:var(--m-${m})">${dir}${esc(v.code||'')}</div>`;
 }
 function makeIcon(v){
   const compact=map.getZoom()<LABEL_ZOOM;
   return L.divIcon({className:'vm',html:iconHtml(v,compact),iconSize:[0,0]});
 }
-function sig(v){return [v.mode,v.code,v.est,map.getZoom()<LABEL_ZOOM,selected===v.key, v.bearing!=null?Math.round(v.bearing/10):'-'].join('|');}
+function sig(v){return [v.mode,v.code,v.est,map.getZoom()<LABEL_ZOOM,selected===v.key,focusSjs.has(v.sj), v.bearing!=null?Math.round(v.bearing/10):'-'].join('|');}
 function upsert(v){
   let e=vehicles.get(v.key);
   const ll=L.latLng(v.lat,v.lon);
   if(!e){
     const marker=L.marker(ll,{icon:makeIcon(v),keyboard:false,riseOnHover:true});
     marker.on('click',ev=>{L.DomEvent.stopPropagation(ev);select(v.key);});
-    marker.addTo(map);
+    marker.addTo(map); if(focusSjs.has(v.sj)) marker.setZIndexOffset(1000);
     e={marker,data:v,sig:sig(v),from:ll,to:ll,t0:0};
     vehicles.set(v.key,e);
   }else{
     e.data=v;
-    const s=sig(v); if(s!==e.sig){e.marker.setIcon(makeIcon(v));e.sig=s;}
+    const s=sig(v); if(s!==e.sig){e.marker.setIcon(makeIcon(v));e.sig=s;e.marker.setZIndexOffset(focusSjs.has(v.sj)?1000:0);}
     const cur=e.marker.getLatLng();
     if(v.est){ e.marker.setLatLng(ll); e.from=e.to=ll; }
     else if(cur.distanceTo(ll)>2){ e.from=cur; e.to=ll; e.t0=performance.now(); animating=true; }
@@ -234,14 +261,15 @@ requestAnimationFrame(frame);
 function sweep(isEst){
   for(const [k,e] of vehicles){
     if(!!e.data.est!==isEst) continue;
-    if(!e.seen || !modes.has(e.data.mode) || (isEst&&!showEst)){ map.removeLayer(e.marker); vehicles.delete(k); if(selected===k) closeCard(); }
+    const keep=focusSjs.has(e.data.sj)||(isEst&&tracked.has(e.data.sj));
+    if(!e.seen || (!modes.has(e.data.mode)&&!keep) || (isEst&&!showEst&&!keep)){ map.removeLayer(e.marker); vehicles.delete(k); if(selected===k) closeCard(); }
     else e.seen=false;
   }
 }
-function refreshIcons(){ for(const e of vehicles.values()){ const s=sig(e.data); if(s!==e.sig){e.marker.setIcon(makeIcon(e.data));e.sig=s;} } }
+function refreshIcons(){ for(const e of vehicles.values()){ const s=sig(e.data); if(s!==e.sig){e.marker.setIcon(makeIcon(e.data));e.sig=s;e.marker.setZIndexOffset(focusSjs.has(e.data.sj)?1000:0);} } }
 
 /* ---------- Sanntid (GPS) fra Entur ---------- */
-const LIVE_Q=`query($b:BoundingBox){ vehicles(boundingBox:$b, maxDataAge:"PT3M"){ vehicleId mode codespace{codespaceId} line{publicCode lineName} destinationName operator{name} location{latitude longitude} bearing delay lastUpdated serviceJourney{id} } }`;
+const LIVE_Q=`query($b:BoundingBox){ vehicles(boundingBox:$b, maxDataAge:"PT3M"){ vehicleId mode codespace{codespaceId} line{publicCode lineName} destinationName operator{name} location{latitude longitude} bearing delay lastUpdated serviceJourney{id date} } }`;
 async function post(url,query,variables){
   const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','ET-Client-Name':CLIENT},body:JSON.stringify({query,variables})});
   if(!r.ok) throw new Error('HTTP '+r.status);
@@ -253,18 +281,19 @@ async function pollLive(){
   if(document.hidden) return;
   try{
     const d=await post(VEH,LIVE_Q,{b:bbox()});
-    const ks=new Set(); let n=0;
+    const ks=new Set(), bySj=new Map(); let n=0;
     for(const x of d.vehicles){
       if(!x.location) continue;
-      const mode=normMode(x.mode), cs=x.codespace?.codespaceId||'';
+      const mode=normMode(x.mode), cs=x.codespace?.codespaceId||'', sj=x.serviceJourney?.id;
       ks.add(cs+'|'+mode);
-      if(!modes.has(mode)) continue;
+      if(sj) bySj.set(sj,'L:'+x.vehicleId);
+      if(!modes.has(mode) && !focusSjs.has(sj)) continue;
       n++;
       upsert({key:'L:'+x.vehicleId, est:false, mode, cs, code:x.line?.publicCode, name:x.line?.lineName,
         dest:x.destinationName, op:x.operator?.name||OPS[cs]||cs, lat:x.location.latitude, lon:x.location.longitude,
-        bearing:x.bearing, delay:x.delay, updated:x.lastUpdated, sj:x.serviceJourney?.id});
+        bearing:x.bearing, delay:x.delay, updated:x.lastUpdated, sj, sjDate:x.serviceJourney?.date});
     }
-    liveKeys=ks; liveCount=n; sweep(false); ok=true; status();
+    liveKeys=ks; liveBySj=bySj; liveCount=n; sweep(false); ok=true; status(); tickEst();
     if(selected) renderCard();
   }catch(e){ ok=false; status(); if(Date.now()-lastErr>60000){lastErr=Date.now();toast('Får ikke kontakt med Entur. Prøver igjen …');} }
 }
@@ -277,7 +306,7 @@ let journeys=new Map(); // sjId -> {mode,cs,code,name,op,dest,calls:[{lat,lon,ar
 let estFetching=false;
 async function pollEst(){
   if(document.hidden || !showEst) return;
-  if(map.getZoom()<EST_MIN_ZOOM){ journeys=new Map(); hint(); sweep(true); estCount=0; status(); return; }
+  if(map.getZoom()<EST_MIN_ZOOM){ journeys=new Map(); hint(); return; }
   if(estFetching) return; estFetching=true;
   try{
     const b=bbox(.15);
@@ -298,38 +327,192 @@ async function pollEst(){
   }catch(e){ /* stille: GPS-laget fortsetter */ }
   finally{ estFetching=false; hint(); }
 }
+function posOf(j,shape,now){
+  const calls=j.calls; if(!calls.length) return null;
+  const at=calls.find(c=>c.arr<=now&&c.dep>now);
+  if(at) return {lat:at.lat,lon:at.lon,bearing:null,ref:at};
+  let prev=null,next=null;
+  for(const c of calls){ if(c.dep<=now) prev=c; else { next=c; break; } }
+  if(!prev&&next){ // ikke startet ennå: vis ved første stopp hvis turen starter snart
+    if(shape && next.dep-now<20*60000) return {lat:next.lat,lon:next.lon,bearing:null,ref:next};
+    return null; }
+  if(!next) return null;
+  const span=next.arr-prev.dep;
+  if(span<=0) return {lat:next.lat,lon:next.lon,bearing:null,ref:next};
+  if(!shape && span>15*60000) return null;
+  const f=Math.min(1,Math.max(0,(now-prev.dep)/span));
+  if(shape && prev.si!=null && next.si!=null && next.si>=prev.si && prev.sd<500 && next.sd<500){
+    const p=alongShape(shape, shape.cum[prev.si]+(shape.cum[next.si]-shape.cum[prev.si])*f);
+    return {...p,ref:next};
+  }
+  return {lat:prev.lat+(next.lat-prev.lat)*f, lon:prev.lon+(next.lon-prev.lon)*f, bearing:brg(prev,next), ref:next};
+}
 function tickEst(){
-  if(!showEst || map.getZoom()<EST_MIN_ZOOM) return;
   const now=Date.now(); let n=0;
-  for(const [id,j] of journeys){
-    if(!modes.has(j.mode)) continue;
+  const doBbox=showEst && map.getZoom()>=EST_MIN_ZOOM;
+  const emit=(id,j,p)=>{ n++; upsert({key:'E:'+id,est:true,mode:j.mode,cs:j.cs,code:j.code,name:j.name,dest:j.dest,op:j.op,lat:p.lat,lon:p.lon,
+    bearing:p.bearing??null, delay:p.ref?Math.round((p.ref.dep-p.ref.aim)/1000):null, updated:null, sj:id}); };
+  if(doBbox) for(const [id,j] of journeys){
+    if(tracked.has(id) || !modes.has(j.mode)) continue;
     if(liveKeys.has(j.cs+'|'+j.mode)) continue; // operatøren sender GPS her – bruk den
     if(!j.calls.some(c=>c.rt)) continue;
-    let prev=null,next=null;
-    for(const c of j.calls){ if(c.dep<=now) prev=c; else if(c.arr>now){ next=c; break; } else { prev=c; } }
-    // står ved stopp (ankommet, ikke gått)
-    const at=j.calls.find(c=>c.arr<=now&&c.dep>now);
-    let lat,lon,bearing=null;
-    if(at){ lat=at.lat; lon=at.lon; }
-    else if(prev&&next){
-      const span=next.arr-prev.dep; if(span<=0||span>15*60000) continue;
-      const f=Math.min(1,Math.max(0,(now-prev.dep)/span));
-      lat=prev.lat+(next.lat-prev.lat)*f; lon=prev.lon+(next.lon-prev.lon)*f;
-      bearing=brg(prev,next);
-    } else continue;
-    const ref=next||at;
-    n++;
-    upsert({key:'E:'+id,est:true,mode:j.mode,cs:j.cs,code:j.code,name:j.name,dest:j.dest,op:j.op,lat,lon,bearing,
-      delay:ref?Math.round((ref.dep-ref.aim)/1000):null, updated:null, sj:id});
+    const p=posOf(j,null,now); if(p) emit(id,j,p);
+  }
+  for(const [id,t] of tracked){
+    if(!t.j || liveBySj.has(id)) continue;   // GPS finnes – den vises i stedet
+    const p=posOf(t.j,t.shape,now); if(p) emit(id,t.j,p);
   }
   estCount=n; sweep(true); status();
   if(selected?.startsWith('E:')) renderCard();
+  if(trip && !selected && now-(tickEst.tr||0)>5000){ tickEst.tr=now; renderTrip(); }
 }
 function brg(a,b){const t=Math.PI/180,y=Math.sin((b.lon-a.lon)*t)*Math.cos(b.lat*t),x=Math.cos(a.lat*t)*Math.sin(b.lat*t)-Math.sin(a.lat*t)*Math.cos(b.lat*t)*Math.cos((b.lon-a.lon)*t);return (Math.atan2(y,x)/t+360)%360;}
 
+/* ---------- Ruter: geometri og sporing av enkeltturer ---------- */
+const SJ_Q=`query($id:String!,$d:Date){ serviceJourney(id:$id){ id line{publicCode name transportMode authority{name}} pointsOnLink{points}
+  estimatedCalls(date:$d){ quay{name latitude longitude} aimedDepartureTime expectedArrivalTime expectedDepartureTime realtime cancellation destinationDisplay{frontText} } } }`;
+const tracked=new Map();          // sjId -> {date, j, shape}
+let focusSjs=new Set(), liveBySj=new Map(), trip=null, selSj=null;
+const tripLayer=L.layerGroup().addTo(map), selLayer=L.layerGroup().addTo(map);
+const localDate=(d=new Date())=>d.toLocaleDateString('sv-SE');
+const hm=d=>new Date(d).toLocaleTimeString('nb-NO',{hour:'2-digit',minute:'2-digit'});
+function decodePolyline(str){
+  let i=0,lat=0,lng=0; const out=[];
+  while(i<str.length){
+    for(let k=0;k<2;k++){ let b,shift=0,res=0; do{ b=str.charCodeAt(i++)-63; res|=(b&0x1f)<<shift; shift+=5; }while(b>=0x20&&i<=str.length);
+      const d=(res&1)?~(res>>1):(res>>1); if(k===0) lat+=d; else lng+=d; }
+    out.push([lat/1e5,lng/1e5]);
+  }
+  return out;
+}
+function dist(a,b){ const k=111320, dx=(b[1]-a[1])*k*Math.cos(a[0]*Math.PI/180), dy=(b[0]-a[0])*k; return Math.hypot(dx,dy); }
+function prepShape(pts){ const cum=[0]; for(let i=1;i<pts.length;i++) cum.push(cum[i-1]+dist(pts[i-1],pts[i])); return {pts,cum}; }
+function snapCalls(shape,calls){
+  let from=0;
+  for(const c of calls){
+    let best=Infinity,bi=from;
+    for(let i=from;i<shape.pts.length;i++){ const d=dist(shape.pts[i],[c.lat,c.lon]); if(d<best){best=d;bi=i;} if(d>best+3000&&i>bi+50) break; }
+    c.si=bi; c.sd=best; from=bi;
+  }
+}
+function alongShape(shape,d){
+  const {pts,cum}=shape; let i=1; while(i<cum.length-1&&cum[i]<d) i++;
+  const seg=cum[i]-cum[i-1]||1, f=Math.min(1,Math.max(0,(d-cum[i-1])/seg)), a=pts[i-1], b=pts[i];
+  return {lat:a[0]+(b[0]-a[0])*f, lon:a[1]+(b[1]-a[1])*f, bearing:brg({lat:a[0],lon:a[1]},{lat:b[0],lon:b[1]})};
+}
+async function fetchTracked(id){
+  const t=tracked.get(id); if(!t) return;
+  try{
+    const d=await post(JP,SJ_Q,{id,d:t.date||localDate()});
+    const s=d.serviceJourney; if(!s||!tracked.has(id)) return;
+    const l=s.line||{}, cs=id.split(':')[0], now=Date.now();
+    const raw=(s.estimatedCalls||[]).filter(c=>c.quay&&!c.cancellation);
+    const calls=raw.map(c=>({name:c.quay.name,lat:c.quay.latitude,lon:c.quay.longitude,arr:+new Date(c.expectedArrivalTime||c.expectedDepartureTime),
+      dep:+new Date(c.expectedDepartureTime),aim:+new Date(c.aimedDepartureTime),rt:c.realtime,front:c.destinationDisplay?.frontText}));
+    const nxt=calls.find(c=>c.dep>now)||calls.at(-1);
+    t.j={mode:normMode(l.transportMode),cs,code:l.publicCode,name:l.name,op:l.authority?.name||OPS[cs]||cs,dest:nxt?.front||calls.at(-1)?.name,calls};
+    if(!t.shape){
+      const pts=s.pointsOnLink?.points?decodePolyline(s.pointsOnLink.points):[];
+      t.shape=prepShape(pts.length>=Math.max(2,calls.length)?pts:calls.map(c=>[c.lat,c.lon]));
+    }
+    snapCalls(t.shape,calls);
+    tickEst();
+    if(id===selSj){ drawSel(); renderCard(); }
+  }catch(e){ if(id===selSj) renderCard(); }
+}
+function track(id,date){ if(!id) return; if(!tracked.has(id)) tracked.set(id,{date,j:null,shape:null}); fetchTracked(id); }
+function inTrip(id){ return !!trip?.legs.some(l=>l.sj===id); }
+setInterval(()=>{ if(!document.hidden) for(const id of tracked.keys()) fetchTracked(id); },30000);
+
+function updateFocus(){
+  const f=new Set(); if(trip) trip.legs.forEach(l=>l.sj&&f.add(l.sj)); if(selSj) f.add(selSj);
+  focusSjs=f; $('#map').classList.toggle('dim',f.size>0); refreshIcons();
+}
+function drawSel(){
+  selLayer.clearLayers();
+  const t=selSj&&tracked.get(selSj); if(!t?.j||!t.shape) return;
+  const m=t.j.mode, now=Date.now(), pts=t.shape.pts;
+  // kjørt strekning svakere, gjenstående sterk
+  const nxt=t.j.calls.find(c=>c.dep>now), cut=nxt?.si ?? pts.length-1;
+  L.polyline(pts,{className:'rcase',weight:9,interactive:false}).addTo(selLayer);
+  if(cut>0) L.polyline(pts.slice(0,cut+1),{className:'rt done m-'+m,weight:5,interactive:false}).addTo(selLayer);
+  L.polyline(pts.slice(Math.max(0,cut-1)),{className:'rt m-'+m,weight:5,interactive:false}).addTo(selLayer);
+  t.j.calls.forEach((c,i)=>{
+    const past=c.dep<=now, last=i===t.j.calls.length-1;
+    L.circleMarker([c.lat,c.lon],{radius:last?6:4.5,className:'stp m-'+m+(past?' past':'')+(last?' end':''),weight:2.5})
+     .bindTooltip(`<span class="num">${hm(c.dep)}</span>${esc(c.name)}`,{direction:'top',offset:[0,-6],className:'stl',permanent:last})
+     .addTo(selLayer);
+  });
+}
+
+/* ---------- Egen reise (fra reisesøket) ---------- */
+function drawTrip(){
+  tripLayer.clearLayers(); if(!trip) return;
+  const legs=trip.legs;
+  legs.forEach((l,i)=>{
+    const pts=l.points?decodePolyline(l.points):[[l.from.lat,l.from.lon],[l.to.lat,l.to.lon]];
+    if(l.mode==='foot'){ L.polyline(pts,{className:'walk',weight:4,dashArray:'1 8',lineCap:'round',interactive:false}).addTo(tripLayer); return; }
+    const m=normMode(l.mode);
+    L.polyline(pts,{className:'rcase',weight:11,interactive:false}).addTo(tripLayer);
+    L.polyline(pts,{className:'rt m-'+m,weight:6,interactive:false}).addTo(tripLayer);
+    L.circleMarker([l.from.lat,l.from.lon],{radius:6,className:'stp m-'+m,weight:3})
+      .bindTooltip(`<span class="num">${hm(l.dep)}</span>${esc(l.from.name)}`,{permanent:true,direction:'top',offset:[0,-8],className:'stl'}).addTo(tripLayer);
+    L.circleMarker([l.to.lat,l.to.lon],{radius:4.5,className:'stp m-'+m,weight:3}).addTo(tripLayer);
+  });
+  const last=legs.at(-1);
+  L.circleMarker([last.to.lat,last.to.lon],{radius:7,className:'stp end m-rail',weight:3})
+    .bindTooltip(`<span class="num">${hm(trip.end)}</span>${esc(last.to.name)}`,{permanent:true,direction:'top',offset:[0,-9],className:'stl'}).addTo(tripLayer);
+}
+function fitTrip(){
+  if(!trip) return; const b=L.latLngBounds([]);
+  trip.legs.forEach(l=>{ (l.points?decodePolyline(l.points):[[l.from.lat,l.from.lon],[l.to.lat,l.to.lon]]).forEach(p=>b.extend(p)); });
+  if(b.isValid()) map.fitBounds(b,{paddingTopLeft:[24,90],paddingBottomRight:[24,280],maxZoom:16});
+}
+function startTrip(t){
+  trip=t; save('trip',t); drawTrip(); updateFocus();
+  t.legs.forEach(l=>{ if(l.sj) track(l.sj,l.date); });
+  renderTrip();
+}
+function endTrip(){
+  const old=trip; trip=null; save('trip',null); tripLayer.clearLayers();
+  old?.legs.forEach(l=>{ if(l.sj&&l.sj!==selSj) tracked.delete(l.sj); });
+  updateFocus(); renderTrip(); tickEst(); updateUrl();
+}
+function renderTrip(){
+  const el=$('#tripCard'); if(!trip||selected){ el.hidden=true; return; }
+  const now=Date.now();
+  const nextLeg=trip.legs.find(l=>l.mode!=='foot'&&+new Date(l.dep)>now);
+  const mins=nextLeg?Math.round((+new Date(nextLeg.dep)-now)/60000):null;
+  const parts=trip.legs.map(l=> l.mode==='foot'
+    ? (l.dur>=120?`<span class="walkc">${ICON_WALK}${Math.round(l.dur/60)}</span>`:'')
+    : `<span class="lp" style="--mc:var(--m-${normMode(l.mode)})">${ic(normMode(l.mode))}${esc(l.code||'')}</span>`).filter(Boolean).join('<span class="sepc">›</span>');
+  el.innerHTML=`<div class="h"><span class="tag gps">Din reise</span><b class="num">${hm(trip.start)} – ${hm(trip.end)}</b>
+     <button class="x" id="tripFit" aria-label="Vis hele reisen"><svg class="i" viewBox="0 0 20 20"><path d="M3 7.5V3h4.5M17 7.5V3h-4.5M3 12.5V17h4.5M17 12.5V17h-4.5"/></svg></button>
+     <button class="x" id="tripX" aria-label="Avslutt reisevisning"><svg class="i" viewBox="0 0 20 20"><path d="M6 6l8 8M14 6l-8 8"/></svg></button></div>
+   <div class="row"><span>${esc(trip.from)} → ${esc(trip.to)}</span></div>
+   <div class="trlegs">${parts}</div>
+   ${nextLeg?`<div class="next">Neste: <strong>${esc(nextLeg.code||LABEL[normMode(nextLeg.mode)])}</strong> fra ${esc(nextLeg.from.name)} kl. <strong>${hm(nextLeg.dep)}</strong> ${mins<=0?'(går nå)':mins<60?`(om ${mins} min)`:''}</div>`:''}`;
+  el.hidden=false;
+  $('#tripX').onclick=endTrip; $('#tripFit').onclick=fitTrip;
+}
+const ICON_WALK='<svg class="i" viewBox="0 0 20 20" aria-hidden="true"><circle cx="11" cy="3.5" r="1.6"/><path d="M10.5 6.5 8 10l3 2-1 6M10.5 6.5l2 4 2.5 1M8 10l-2.5 1M11 12l2.5 2.5 1 3.5"/></svg>';
+
 /* ---------- Kjøretøykort ---------- */
-function select(k){ const prev=selected; selected=k; for(const key of [prev,k]){const e=vehicles.get(key); if(e){e.sig='';e.marker.setIcon(makeIcon(e.data));}} renderCard(); }
-function closeCard(){ const e=vehicles.get(selected); selected=null; if(e){e.sig='';e.marker.setIcon(makeIcon(e.data));} $('#card').hidden=true; }
+function select(k){
+  const prevSj=selSj; selected=k;
+  const v=vehicles.get(k)?.data; selSj=v?.sj||null;
+  if(prevSj&&prevSj!==selSj&&!inTrip(prevSj)) tracked.delete(prevSj);
+  selLayer.clearLayers(); updateFocus();
+  for(const e of vehicles.values()){ e.sig=''; } refreshIcons();
+  if(selSj){ if(tracked.get(selSj)?.j){ drawSel(); } track(selSj, v.sjDate); }
+  renderCard(); renderTrip();
+}
+function closeCard(){
+  if(!selected&&!selSj){ return; }
+  if(selSj&&!inTrip(selSj)) tracked.delete(selSj);
+  selected=null; selSj=null; selLayer.clearLayers(); $('#card').hidden=true;
+  updateFocus(); for(const e of vehicles.values()) e.sig=''; refreshIcons(); renderTrip();
+}
 function renderCard(){
   const e=vehicles.get(selected); if(!e){ $('#card').hidden=true; return; }
   const v=e.data, d=v.delay;
@@ -339,7 +522,10 @@ function renderCard(){
      <b>${v.dest?'mot '+esc(v.dest):esc(v.name||LABEL[v.mode])}</b>
      <button class="x" id="cardX" aria-label="Lukk"><svg class="i" viewBox="0 0 20 20"><path d="M6 6l8 8M14 6l-8 8"/></svg></button></div>
    <div class="row">${dl}<span>${esc(LABEL[v.mode])} · ${esc(v.op||'')}</span></div>
-   <div class="row">${v.est?'<span class="tag">Beregnet</span><span>Posisjon regnet ut fra sanntidstider ved stoppene</span>':`<span class="tag gps">GPS</span><span>${age!=null?`Oppdatert for ${age<60?age+' s':Math.round(age/60)+' min'} siden`:''}</span>`}</div>`;
+   ${(()=>{ const t=v.sj&&tracked.get(v.sj); if(!v.sj) return ''; if(!t?.j) return '<div class="row">Henter ruta …</div>';
+      const nx=t.j.calls.filter(c=>c.dep>Date.now()).slice(0,4);
+      return nx.length?`<ol class="nx">${nx.map(c=>`<li><span class="num">${hm(c.dep)}${c.dep-c.aim>=60000?`<s>${hm(c.aim)}</s>`:''}</span><span class="nm">${esc(c.name)}</span></li>`).join('')}</ol>`:''; })()}
+   <div class="row">${inTrip(v.sj)?'<span class="tag gps">Din reise</span>':''}${v.est?'<span class="tag">Beregnet</span><span>Posisjon regnet ut fra sanntidstider ved stoppene</span>':`<span class="tag gps">GPS</span><span>${age!=null?`Oppdatert for ${age<60?age+' s':Math.round(age/60)+' min'} siden`:''}</span>`}</div>`;
   $('#card').hidden=false; $('#cardX').onclick=closeCard;
 }
 map.on('click',closeCard);
@@ -366,22 +552,34 @@ estBtn.onclick=()=>{ showEst=!showEst; estBtn.setAttribute('aria-pressed',showEs
 let mt;
 map.on('moveend',()=>{
   save('center',[map.getCenter().lat,map.getCenter().lng]); save('zoom',map.getZoom());
-  const c=map.getCenter(); history.replaceState(null,'',`?lat=${c.lat.toFixed(4)}&lon=${c.lng.toFixed(4)}&z=${map.getZoom()}`);
+  updateUrl();
   refreshIcons(); hint(); status();
   clearTimeout(mt); mt=setTimeout(()=>{pollLive();pollEst();},250);
 });
 
-/* ---------- Posisjon og deling ---------- */
-let meMarker=null;
-$('#locate').onclick=()=>{
-  if(!navigator.geolocation){toast('Posisjon er ikke tilgjengelig');return;}
-  navigator.geolocation.getCurrentPosition(p=>{
-    const ll=[p.coords.latitude,p.coords.longitude];
-    if(!meMarker) meMarker=L.marker(ll,{icon:L.divIcon({className:'vm',html:'<div class="me"></div>',iconSize:[0,0]}),interactive:false}).addTo(map);
-    else meMarker.setLatLng(ll);
-    map.setView(ll,Math.max(map.getZoom(),15));
-  },()=>toast('Fikk ikke tilgang til posisjonen din'),{enableHighAccuracy:true,timeout:8000,maximumAge:30000});
-};
+function updateUrl(){ const c=map.getCenter(); history.replaceState(null,'',`?lat=${c.lat.toFixed(4)}&lon=${c.lng.toFixed(4)}&z=${map.getZoom()}${trip?'&reise=1':''}`); }
+
+/* ---------- Min posisjon ---------- */
+let meMarker=null, meCircle=null, watchId=null, wantCenter=false;
+function startWatch(center){
+  if(center) wantCenter=true;
+  if(!navigator.geolocation){ if(center) toast('Posisjon er ikke tilgjengelig'); return; }
+  if(watchId!==null){ if(center&&meMarker){ wantCenter=false; map.setView(meMarker.getLatLng(),Math.max(map.getZoom(),15)); } return; }
+  watchId=navigator.geolocation.watchPosition(p=>{
+    const ll=[p.coords.latitude,p.coords.longitude], acc=Math.min(p.coords.accuracy||0,2000);
+    if(!meMarker){
+      meCircle=L.circle(ll,{radius:acc,className:'acc',interactive:false}).addTo(map);
+      meMarker=L.marker(ll,{icon:L.divIcon({className:'vm',html:'<div class="me"></div>',iconSize:[0,0]}),interactive:false,zIndexOffset:2000}).addTo(map);
+    } else { meMarker.setLatLng(ll); meCircle.setLatLng(ll).setRadius(acc); }
+    $('#locate').classList.add('me-on');
+    if(wantCenter){ wantCenter=false; map.setView(ll,Math.max(map.getZoom(),15)); }
+  },err=>{
+    if(err.code===1){ navigator.geolocation.clearWatch(watchId); watchId=null; $('#locate').classList.remove('me-on'); if(wantCenter) toast('Gi Safari tilgang til posisjon for å se hvor du er'); wantCenter=false; }
+  },{enableHighAccuracy:true,maximumAge:10000,timeout:20000});
+}
+$('#locate').onclick=()=>startWatch(true);
+
+/* ---------- Deling ---------- */
 $('#share').onclick=async()=>{
   const url=location.href;
   if(navigator.share){ try{ await navigator.share({title:'Reisekart',url}); }catch{} return; }
@@ -390,6 +588,8 @@ $('#share').onclick=async()=>{
 function toast(t){const el=$('#toast');el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,2200);}
 
 /* ---------- Løkker ---------- */
+if(qs.get('reise')){ const t=load('trip',null); if(t?.legs?.length){ startTrip(t); if(!qs.get('lat')) fitTrip(); } }
+startWatch(false);
 pollLive(); pollEst(); hint();
 setInterval(pollLive,LIVE_MS);
 setInterval(pollEst,EST_MS);

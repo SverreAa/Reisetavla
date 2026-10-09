@@ -160,6 +160,9 @@ svg.i{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-widt
 .leg .tx b{font-weight:700}
 .leg .tx small{color:var(--muted);font-size:13px}
 
+.maprow{padding-top:14px;list-style:none}
+.maprow .btn{width:100%}
+.maprow svg{width:18px;height:18px}
 .dep-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;background:var(--surface);border-radius:16px;padding:12px 14px;box-shadow:var(--shadow)}
 .dep-row .dest b{display:block;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dep-row .dest small{color:var(--muted);font-size:13px}
@@ -403,9 +406,9 @@ async function gql(query, variables){
 const TRIP_Q=`query($from:Location!,$to:Location!,$dateTime:DateTime,$arriveBy:Boolean,$modes:Modes){
  trip(from:$from,to:$to,dateTime:$dateTime,arriveBy:$arriveBy,modes:$modes,numTripPatterns:6){
   tripPatterns{ aimedStartTime expectedStartTime aimedEndTime expectedEndTime duration
-   legs{ mode duration distance realtime aimedStartTime expectedStartTime aimedEndTime expectedEndTime
+   legs{ mode duration distance realtime aimedStartTime expectedStartTime aimedEndTime expectedEndTime serviceDate serviceJourney{ id } pointsOnLink{ points }
     line{ publicCode name transportMode authority{ name } presentation{ colour textColour } }
-    fromPlace{ name quay{ publicCode } } toPlace{ name quay{ publicCode } }
+    fromPlace{ name latitude longitude quay{ publicCode } } toPlace{ name latitude longitude quay{ publicCode } }
     fromEstimatedCall{ cancellation destinationDisplay{ frontText } }
     situations{ summary{ value language } } } } } }`;
 const BOARD_Q=`query($id:String!,$start:DateTime,$modes:[TransportMode]){
@@ -505,11 +508,26 @@ function renderTrips(list){
         ${cancelled?`<div class="warnline" style="color:var(--crit)">${ic('warn')}<span>Del av reisen er innstilt.</span></div>`:''}
         ${sits.map(s=>`<div class="warnline">${ic('warn')}<span>${esc(s)}</span></div>`).join('')}
       </button>
-      <ol class="legs" id="legs${i}" hidden>${p.legs.map(legRow).join('')}</ol>
+      <ol class="legs" id="legs${i}" hidden>${p.legs.map(legRow).join('')}${live?`<li class="maprow"><button class="btn ghost" data-map="${i}">${MAP_SVG} Vis reisen på kart</button></li>`:''}</ol>
     </li>`;
   }).join('');
+  lastTrips=list;
+  res.querySelectorAll('[data-map]').forEach(b=>b.onclick=()=>openOnMap(lastTrips[+b.dataset.map]));
   res.querySelectorAll('.trip-head').forEach(b=>b.onclick=()=>{
     const open=b.getAttribute('aria-expanded')==='true'; b.setAttribute('aria-expanded',!open); b.nextElementSibling.hidden=open;});
+}
+let lastTrips=[];
+const MAP_SVG='<svg class="i" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 3.5 2.5 5.5v11l4.5-2 6 2 4.5-2v-11l-4.5 2z"/><path d="M7 3.5v11M13 5.5v11"/></svg>';
+function openOnMap(p){
+  const pl=x=>({name:x?.name,lat:x?.latitude,lon:x?.longitude});
+  const legs=p.legs.filter(l=>l.fromPlace?.latitude!=null&&l.toPlace?.latitude!=null).map(l=>({
+    mode:l.mode, code:l.line?.publicCode, sj:l.serviceJourney?.id||null, date:l.serviceDate||null, points:l.pointsOnLink?.points||null,
+    from:pl(l.fromPlace), to:pl(l.toPlace), dep:l.expectedStartTime, arr:l.expectedEndTime, dur:l.duration,
+    dest:l.fromEstimatedCall?.destinationDisplay?.frontText||null }));
+  if(!legs.length){ toast('Fant ikke kartdata for reisen'); return; }
+  const trip={from:state.from?.name||legs[0].from.name, to:state.to?.name||legs.at(-1).to.name, start:p.expectedStartTime, end:p.expectedEndTime, legs};
+  try{ localStorage.setItem('reisekart.trip',JSON.stringify(trip)); }catch{ toast('Kunne ikke åpne kartet'); return; }
+  location.href='kart.html?reise=1';
 }
 function legRow(l){
   if(l.mode==='foot'){
