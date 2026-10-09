@@ -1,0 +1,71 @@
+<!-- @dsCard height=288 -->
+<!doctype html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<title>Reisetavla</title>
+<style>
+  html, body { margin:0; height:100%; }
+  body { background:var(--bg); color:var(--ink); font-family:var(--font-display); overflow:hidden; }
+  .cover { position:relative; width:960px; height:288px; overflow:hidden; }
+  .art { position:absolute; top:0; left:480px; width:480px; height:288px; overflow:hidden; }
+  .art svg { display:block; width:480px; height:288px; }
+  .accent { fill:var(--accent); }
+  .deep { fill:var(--ink); }
+  .bus { fill:var(--m-bus); }
+  .tram { fill:var(--m-tram); }
+  .ring { fill:none; stroke:var(--surface); stroke-width:3; }
+  .dot { fill:var(--surface); }
+  .dots { stroke:var(--surface); stroke-width:2; stroke-dasharray:2 4; stroke-linecap:round; }
+  .seg { rx:4px; }
+  .s-accent { fill:var(--accent); }
+  .s-bus { fill:var(--m-bus); }
+  .s-tram { fill:var(--m-tram); }
+  .foot { stroke:var(--m-foot); stroke-width:8; stroke-dasharray:3 3; }
+  .words { position:absolute; left:var(--space-20); bottom:var(--space-20); max-width:440px; }
+  .name { margin:0; font-family:var(--font-display); font-size:72px; line-height:.92; font-weight:800; letter-spacing:-.01em; color:var(--ink); }
+  .name span { color:var(--accent); }
+  .tag { margin:var(--space-8) 0 0 3px; font-family:var(--font-body); font-size:14px; line-height:20px; color:var(--muted); }
+</style>
+</head>
+<body>
+<div class="cover">
+<div class="art" aria-hidden="true">
+<svg viewBox="0 0 480 288" width="480" height="288">
+<!--
+  blocks      accent 176x232 slab bled off the top (radius-22) · ink 272x176 bleeding off the right edge (radius-22) · m-bus 96x48 and m-tram 64x48 satellites (radius-20) ≈ 30% of 960x288
+  arrangement one tall accent slab with the route line cut into it, a wide ink block to its right, two small mode blocks under the slab; space-16 gutters, bottoms on one line
+  pattern     the trip bar from TripCard: bar-height (8px) segments with space-3 gaps and dotted m-foot walking, chosen because the segmented bar and the route dots are the app's own literal motif
+  scales      gutters space-16 · row pitch 28 (space-14 x 2) · segment gap space-3 · corners radius-22, radius-20, segment rx 4 (half of bar-height)
+-->
+<rect class="accent" x="16" y="-24" width="176" height="232" rx="22"/>
+<circle class="ring" cx="64" cy="40" r="8"/>
+<line class="dots" x1="64" y1="56" x2="64" y2="152"/>
+<circle class="dot" cx="64" cy="168" r="8"/>
+<rect class="bus" x="16" y="224" width="96" height="48" rx="20"/>
+<rect class="tram" x="128" y="224" width="64" height="48" rx="20"/>
+<rect class="deep" x="208" y="40" width="300" height="232" rx="22"/>
+<line class="foot" x1="232" y1="92" x2="250" y2="92"/>
+<rect class="seg s-bus" x="253" y="88" width="77" height="8" rx="4"/>
+<rect class="seg s-accent" x="333" y="88" width="123" height="8" rx="4"/>
+<rect class="seg s-tram" x="232" y="120" width="68" height="8" rx="4"/>
+<line class="foot" x1="303" y1="124" x2="330" y2="124"/>
+<rect class="seg s-bus" x="333" y="120" width="123" height="8" rx="4"/>
+<rect class="seg s-accent" x="232" y="148" width="196" height="8" rx="4"/>
+<line class="foot" x1="431" y1="152" x2="456" y2="152"/>
+<line class="foot" x1="232" y1="180" x2="262" y2="180"/>
+<rect class="seg s-tram" x="265" y="176" width="75" height="8" rx="4"/>
+<rect class="seg s-accent" x="343" y="176" width="113" height="8" rx="4"/>
+<rect class="seg s-bus" x="232" y="204" width="44" height="8" rx="4"/>
+<rect class="seg s-tram" x="279" y="204" width="95" height="8" rx="4"/>
+<line class="foot" x1="377" y1="208" x2="400" y2="208"/>
+<rect class="seg s-accent" x="403" y="204" width="53" height="8" rx="4"/>
+</svg>
+</div>
+<div class="words">
+<h1 class="name">Reise<span>tavla</span></h1>
+<p class="tag">Neste avgang, på et blikk. Kollektivreiser i hele Norge, i sanntid.</p>
+</div>
+</div>
+</body>
+</html>

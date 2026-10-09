@@ -1,0 +1,18 @@
+<!-- @dsCard group="Overlegg" height=420 -->
+<!doctype html>
+<html lang="no">
+<head><meta charset="utf-8"><title>BottomSheet</title>
+<style>html,body{margin:0}body{background:var(--bg);color:var(--ink)}#root{padding:16px;display:grid;gap:12px;align-content:start}#root{padding:0;min-height:420px}</style>
+</head>
+<body>
+<div id="root" class="rt-root"></div>
+<script>
+var R = window.Reisetavla, h = React.createElement;
+ReactDOM.createRoot(document.getElementById('root')).render(h(R.BottomSheet, { title: 'Del reiseoppsettet', inline: true },
+  h('dl', null, h('dt', null, 'Fra'), h('dd', null, 'Nationaltheatret'), h('dt', null, 'Til'), h('dd', null, 'Oslo lufthavn'), h('dt', null, 'Tid'), h('dd', null, 'avreise nå'), h('dt', null, 'Med'), h('dd', null, 'Tog, Ekspressbuss')),
+  h('input', { id: 'share-link', readOnly: true, defaultValue: 'https://din-side.no/reisetavla/?fra=NSR%3AStopPlace%3A58404', 'aria-label': 'Lenke' }),
+  h('div', { className: 'row' }, h(R.Button, { variant: 'ghost' }, 'Kopier lenke'), h(R.Button, null, 'Del …')),
+  h(R.Button, { variant: 'ghost' }, 'Lukk')));
+</script>
+</body>
+</html>

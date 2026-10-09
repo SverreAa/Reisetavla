@@ -1,0 +1,14 @@
+<!-- @dsCard group="Handlinger" height=88 -->
+<!doctype html>
+<html lang="no">
+<head><meta charset="utf-8"><title>IconButton</title>
+<style>html,body{margin:0}body{background:var(--bg);color:var(--ink)}#root{padding:16px;display:grid;gap:12px;align-content:start}</style>
+</head>
+<body>
+<div id="root" class="rt-root"></div>
+<script>
+var R = window.Reisetavla, h = React.createElement;
+ReactDOM.createRoot(document.getElementById('root')).render(h('div', { style: { display: 'flex', gap: 10 } }, h(R.IconButton, { icon: 'star', label: 'Lagre reisen' }), h(R.IconButton, { icon: 'star', label: 'Fjern lagret reise', pressed: true }), h(R.IconButton, { icon: 'share', label: 'Del oppsettet' }), h(R.IconButton, { icon: 'swap', label: 'Bytt fra og til', inset: true })));
+</script>
+</body>
+</html>

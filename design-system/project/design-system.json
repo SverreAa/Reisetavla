@@ -1,0 +1,38 @@
+{
+  "v": 3,
+  "layout": "files",
+  "createdOnFiles": { "v": 1, "at": "2026-10-09T12:00:00Z" },
+  "title": "Reisetavla Mobile",
+  "namespace": "Reisetavla",
+  "libraries": [{ "name": "react", "version": "18" }, { "name": "react-dom", "version": "18" }],
+  "sections": {},
+  "groups": ["Icons"],
+  "assetGroups": {
+    "Icons": {
+      "name": "Icons",
+      "tile": "xs",
+      "order": ["bus.svg", "coach.svg", "rail.svg", "metro.svg", "tram.svg", "water.svg", "air.svg", "foot.svg", "pin.svg", "me.svg", "warn.svg", "star.svg", "share.svg", "swap.svg", "close.svg", "board.svg"],
+      "files": {
+        "bus.svg": { "name": "bus.svg", "blob": "81c9cdfd403d414555fdbc8b213a61c9", "size": 374, "type": "image/svg+xml" },
+        "coach.svg": { "name": "coach.svg", "blob": "cebe2ca7db48cc7fa7b7a1470953516c", "size": 376, "type": "image/svg+xml" },
+        "rail.svg": { "name": "rail.svg", "blob": "99591a01d09e5f13b1caed6dedda3cd7", "size": 347, "type": "image/svg+xml" },
+        "metro.svg": { "name": "metro.svg", "blob": "2e6f493c633fe4a91617e2bb6848a7a6", "size": 262, "type": "image/svg+xml" },
+        "tram.svg": { "name": "tram.svg", "blob": "ee0b40a173c8755043ed5d509ce23ce4", "size": 318, "type": "image/svg+xml" },
+        "water.svg": { "name": "water.svg", "blob": "a7deea83d06382f2b1cd28654c7486a8", "size": 348, "type": "image/svg+xml" },
+        "air.svg": { "name": "air.svg", "blob": "cc86bee8215fe6e44440361afddb6c1c", "size": 333, "type": "image/svg+xml" },
+        "foot.svg": { "name": "foot.svg", "blob": "7c30b071fd7d3c2066537f20ef196b1a", "size": 317, "type": "image/svg+xml" },
+        "pin.svg": { "name": "pin.svg", "blob": "d00191142fb5483c8b856ce728650b4f", "size": 307, "type": "image/svg+xml" },
+        "me.svg": { "name": "me.svg", "blob": "2fdb10f34b9c8a2190e213ee89c93356", "size": 320, "type": "image/svg+xml" },
+        "warn.svg": { "name": "warn.svg", "blob": "6aefa5b3c6f4e516ccdee5da26104dca", "size": 253, "type": "image/svg+xml" },
+        "star.svg": { "name": "star.svg", "blob": "22118db56fa16339a35af7296d24bf6d", "size": 268, "type": "image/svg+xml" },
+        "share.svg": { "name": "share.svg", "blob": "77440bc7832392d14f52113a17803a23", "size": 252, "type": "image/svg+xml" },
+        "swap.svg": { "name": "swap.svg", "blob": "1296b240e661464fdd937e9c79d72724", "size": 254, "type": "image/svg+xml" },
+        "close.svg": { "name": "close.svg", "blob": "369030278211c9b24dfa79394cd249fe", "size": 222, "type": "image/svg+xml" },
+        "board.svg": { "name": "board.svg", "blob": "a6bfa23220b44595d859e66993cc6279", "size": 295, "type": "image/svg+xml" }
+      }
+    }
+  },
+  "blobs": {},
+  "docs": { "readme": "project/README.md", "sections": [] },
+  "lastChange": { "by": "Sverre", "at": "2026-10-09T15:00:00Z", "via": "Claude Code", "note": "Root-komponent, knappefiks og nowrap; lik Claude Design-prosjektet" }
+}

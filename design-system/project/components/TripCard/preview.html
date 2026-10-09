@@ -1,0 +1,19 @@
+<!-- @dsCard group="Reise" height=520 -->
+<!doctype html>
+<html lang="no">
+<head><meta charset="utf-8"><title>TripCard</title>
+<style>html,body{margin:0}body{background:var(--bg);color:var(--ink)}#root{padding:16px;display:grid;gap:12px;align-content:start}</style>
+</head>
+<body>
+<div id="root" class="rt-root"></div>
+<script>
+var R = window.Reisetavla, h = React.createElement;
+ReactDOM.createRoot(document.getElementById('root')).render(h('ul', { className: 'rt-list' },
+  h(R.TripCard, { dep: '08:42', arr: '09:17', duration: '35 min', soon: 'om 4 min', realtime: true, platform: 'Spor 2', open: true,
+    legs: [{ mode: 'foot', minutes: 3, duration: 3, start: '08:39', to: 'Nationaltheatret', meters: 240 }, { mode: 'rail', code: 'F2', duration: 29, start: '08:42', end: '09:11', towards: 'Oslo lufthavn', from: 'Nationaltheatret', to: 'Oslo lufthavn', platform: '2', operator: 'Flytoget', realtime: true }, { mode: 'foot', minutes: 3, duration: 3, start: '09:11', to: 'Oslo lufthavn' }] }),
+  h(R.TripCard, { dep: '08:55', wasDep: '08:52', arr: '09:41', duration: '46 min', soon: 'om 17 min', realtime: true,
+    legs: [{ mode: 'foot', minutes: 4, duration: 4 }, { mode: 'metro', code: '2', duration: 9 }, { mode: 'foot', minutes: 4, duration: 4 }, { mode: 'rail', code: 'R11', duration: 26 }, { mode: 'foot', minutes: 3, duration: 3 }],
+    warnings: ['Sporarbeid gir noe lengre reisetid denne helgen.'] })));
+</script>
+</body>
+</html>

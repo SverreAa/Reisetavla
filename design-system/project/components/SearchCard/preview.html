@@ -1,0 +1,16 @@
+<!-- @dsCard group="Søk" height=360 -->
+<!doctype html>
+<html lang="no">
+<head><meta charset="utf-8"><title>SearchCard</title>
+<style>html,body{margin:0}body{background:var(--bg);color:var(--ink)}#root{padding:16px;display:grid;gap:12px;align-content:start}</style>
+</head>
+<body>
+<div id="root" class="rt-root"></div>
+<script>
+var R = window.Reisetavla, h = React.createElement;
+ReactDOM.createRoot(document.getElementById('root')).render(h(R.SearchCard, { from: 'Nationaltheatret', to: 'Oslo lufthavn', idPrefix: 'p' },
+  h('div', { style: { display: 'grid', gap: 10 } }, h(R.SegmentedControl, { label: 'Tidspunkt', value: 'now', options: [{ id: 'now', label: 'Nå' }, { id: 'depart', label: 'Avreise' }, { id: 'arrive', label: 'Ankomst' }] })),
+  h('div', { className: 'rt-modes' }, h(R.ModeChip, { mode: 'bus' }), h(R.ModeChip, { mode: 'rail' }), h(R.ModeChip, { mode: 'metro', pressed: false }), h(R.ModeChip, { mode: 'tram' }))));
+</script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+<!-- @dsCard group="Reise" height=300 -->
+<!doctype html>
+<html lang="no">
+<head><meta charset="utf-8"><title>DepartureRow</title>
+<style>html,body{margin:0}body{background:var(--bg);color:var(--ink)}#root{padding:16px;display:grid;gap:12px;align-content:start}</style>
+</head>
+<body>
+<div id="root" class="rt-root"></div>
+<script>
+var R = window.Reisetavla, h = React.createElement;
+ReactDOM.createRoot(document.getElementById('root')).render(h('ul', { className: 'rt-list' },
+  h(R.DepartureRow, { mode: 'metro', code: '5', destination: 'Vestli', platform: 'A', operator: 'Ruter', realtime: true, when: '2 min', sub: '08:44' }),
+  h(R.DepartureRow, { mode: 'tram', code: '12', destination: 'Majorstuen', platform: 'C', operator: 'Ruter', realtime: true, when: '7 min', sub: '08:49', late: true }),
+  h(R.DepartureRow, { mode: 'rail', code: 'R11', destination: 'Skien', platform: '4', operator: 'Vy', when: '09:12' }),
+  h(R.DepartureRow, { mode: 'bus', code: '31', destination: 'Tonsenhagen', platform: 'B', operator: 'Ruter', when: '', sub: '08:58', cancelled: true })));
+</script>
+</body>
+</html>

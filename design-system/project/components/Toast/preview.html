@@ -1,0 +1,14 @@
+<!-- @dsCard group="Overlegg" height=72 -->
+<!doctype html>
+<html lang="no">
+<head><meta charset="utf-8"><title>Toast</title>
+<style>html,body{margin:0}body{background:var(--bg);color:var(--ink)}#root{padding:16px;display:grid;gap:12px;align-content:start}</style>
+</head>
+<body>
+<div id="root" class="rt-root"></div>
+<script>
+var R = window.Reisetavla, h = React.createElement;
+ReactDOM.createRoot(document.getElementById('root')).render(h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } }, h(R.Toast, { inline: true }, 'Lagret i Mine reiser'), h(R.Toast, { inline: true }, 'Lenken er kopiert')));
+</script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+{
+    "projectId":  "fdb13b0a-d77f-484e-9907-6326872377cb",
+    "pkg":  "reisetavla-ds",
+    "globalName":  "Reisetavla",
+    "shape":  "package",
+    "buildCmd":  "node design-system/package/build.mjs",
+    "entry":  "design-system/package/dist/index.js",
+    "cssEntry":  "dist/styles.css",
+    "docsDir":  "docs/components",
+    "provider":  {
+                     "component":  "Root"
+                 },
+    "overrides":  {
+                      "BottomSheet":  {
+                                          "cardMode":  "single",
+                                          "viewport":  "420x500"
+                                      },
+                      "Button":  {
+                                     "cardMode":  "column"
+                                 },
+                      "AppHeader":  {
+                                        "cardMode":  "column"
+                                    },
+                      "TabBar":  {
+                                     "cardMode":  "column"
+                                 },
+                      "DepartureRow":  {
+                                           "cardMode":  "column"
+                                       },
+                      "ResultHeader":  {
+                                           "cardMode":  "column"
+                                       },
+                      "TripCard":  {
+                                       "cardMode":  "column"
+                                   },
+                      "ModeChip":  {
+                                       "cardMode":  "column"
+                                   },
+                      "SavedChip":  {
+                                        "cardMode":  "column"
+                                    },
+                      "SearchCard":  {
+                                         "cardMode":  "column"
+                                     },
+                      "SegmentedControl":  {
+                                               "cardMode":  "column"
+                                           },
+                      "SuggestionList":  {
+                                             "cardMode":  "column"
+                                         },
+                      "EmptyState":  {
+                                         "cardMode":  "column"
+                                     },
+                      "WarningLine":  {
+                                          "cardMode":  "column"
+                                      }
+                  },
+    "readmeHeader":  ".design-sync/conventions.md"
+}

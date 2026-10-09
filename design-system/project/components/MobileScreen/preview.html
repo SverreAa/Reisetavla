@@ -1,0 +1,38 @@
+<!-- @dsCard group="Skjermer" height=860 page subtitle="Reisesøk, 390 × 844" -->
+<!doctype html>
+<html lang="no">
+<head><meta charset="utf-8"><title>MobileScreen</title>
+<style>
+html,body{margin:0}
+body{background:var(--surface-2);display:grid;place-items:center;padding:8px 0}
+.phone{width:390px;height:844px;border-radius:44px;overflow:hidden;background:var(--bg);box-shadow:var(--shadow);border:1px solid var(--line);display:flex;flex-direction:column}
+.sys{height:47px;flex:none}
+.scroll{flex:1;overflow:auto}
+.scroll .rt-screen{padding-bottom:16px}
+</style>
+</head>
+<body>
+<div class="phone rt-root">
+  <div class="sys" aria-hidden="true"></div>
+  <div class="scroll"><div id="root"></div></div>
+  <div id="tabs"></div>
+</div>
+<script>
+var R = window.Reisetavla, h = React.createElement;
+ReactDOM.createRoot(document.getElementById('root')).render(
+  h('div', { className: 'rt-screen' },
+    h(R.AppHeader, { live: true }),
+    h('div', { className: 'rt-saved' }, h(R.SavedChip, { name: 'Hjem → Jobb' }), h(R.SavedChip, { name: 'Til flyet' })),
+    h(R.SearchCard, { from: 'Nationaltheatret', to: 'Oslo lufthavn', idPrefix: 's' },
+      h(R.SegmentedControl, { label: 'Tidspunkt', value: 'now', options: [{ id: 'now', label: 'Nå' }, { id: 'depart', label: 'Avreise' }, { id: 'arrive', label: 'Ankomst' }] }),
+      h('div', { className: 'rt-modes' }, h(R.ModeChip, { mode: 'rail' }), h(R.ModeChip, { mode: 'coach' }), h(R.ModeChip, { mode: 'bus', pressed: false }), h(R.ModeChip, { mode: 'metro', pressed: false }))),
+    h(R.ResultHeader, { title: 'Nationaltheatret → Oslo lufthavn', subtitle: 'avreise nå · Tog, Ekspressbuss', saved: true }),
+    h('ul', { className: 'rt-list' },
+      h(R.TripCard, { dep: '08:42', arr: '09:17', duration: '35 min', soon: 'om 4 min', realtime: true, platform: 'Spor 2',
+        legs: [{ mode: 'foot', minutes: 3, duration: 3 }, { mode: 'rail', code: 'F2', duration: 29 }, { mode: 'foot', minutes: 3, duration: 3 }] }),
+      h(R.TripCard, { dep: '08:55', wasDep: '08:52', arr: '09:41', duration: '46 min', soon: 'om 17 min', realtime: true,
+        legs: [{ mode: 'foot', minutes: 4, duration: 4 }, { mode: 'coach', code: 'FB2', duration: 42 }] }))));
+ReactDOM.createRoot(document.getElementById('tabs')).render(h(R.TabBar, { active: 'reiser' }));
+</script>
+</body>
+</html>

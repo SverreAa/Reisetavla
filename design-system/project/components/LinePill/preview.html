@@ -1,0 +1,14 @@
+<!-- @dsCard group="Reise" height=120 -->
+<!doctype html>
+<html lang="no">
+<head><meta charset="utf-8"><title>LinePill</title>
+<style>html,body{margin:0}body{background:var(--bg);color:var(--ink)}#root{padding:16px;display:grid;gap:12px;align-content:start}</style>
+</head>
+<body>
+<div id="root" class="rt-root"></div>
+<script>
+var R = window.Reisetavla, h = React.createElement;
+ReactDOM.createRoot(document.getElementById('root')).render(h('div', { className: 'rt-chips' }, h(R.LinePill, { mode: 'bus', code: '31' }), h(R.LinePill, { mode: 'rail', code: 'R11' }), h(R.LinePill, { mode: 'metro', code: '5' }), h(R.LinePill, { mode: 'tram', code: '12' }), h(R.LinePill, { mode: 'water', code: 'B10' }), h(R.LinePill, { mode: 'coach', code: 'FB2' }), h(R.LinePill, { mode: 'air', code: 'WF 812' }), h(R.LinePill, { mode: 'rail', code: 'F2', colour: '#949494', textColour: '#ffffff' })));
+</script>
+</body>
+</html>
