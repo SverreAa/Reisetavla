@@ -34,6 +34,7 @@
   --m-bus:#E4625A; --m-coach:#B07ACF; --m-rail:#5C93DB; --m-metro:#EE9246; --m-tram:#3CB27C; --m-water:#38B3C8; --m-air:#8A91E8;
   color-scheme:dark}}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{height:100%;margin:0;overflow:hidden;background:var(--bg);color:var(--ink);font:15px/1.4 var(--f-body);-webkit-text-size-adjust:100%}
 button,a{font:inherit;color:inherit}
 button{background:none;border:0;padding:0;cursor:pointer}
@@ -41,6 +42,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
 svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none}
 #map{position:fixed;inset:0;background:var(--bg)}
 .leaflet-container{font-family:var(--f-body);background:var(--bg)}
+@media (prefers-color-scheme: dark){.leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.82) contrast(.92) saturate(.6)}}
 .leaflet-control-attribution{font-size:10px;background:var(--glass)!important;color:var(--muted)!important}
 .leaflet-control-attribution a{color:var(--muted)!important}
 .leaflet-control-zoom{display:none}
@@ -170,16 +172,11 @@ let showEst=load('est',true);
 const qs=new URLSearchParams(location.search);
 const start=qs.get('lat')&&qs.get('lon')?[+qs.get('lat'),+qs.get('lon')]:load('center',[59.9127,10.7461]);
 const startZ=qs.get('z')?+qs.get('z'):load('zoom',13);
-const map=L.map('map',{zoomControl:false,attributionControl:true,preferCanvas:false}).setView(start,startZ);
+const map=L.map('map',{zoomControl:false,attributionControl:true,maxZoom:18}).setView(start,startZ);
 const dark=matchMedia('(prefers-color-scheme: dark)');
-let tiles;
-function setTiles(){
-  if(tiles) map.removeLayer(tiles);
-  tiles=L.tileLayer(`https://{s}.basemaps.cartocdn.com/${dark.matches?'dark_all':'rastertiles/voyager'}/{z}/{x}/{y}{r}.png`,{
-    subdomains:'abcd',maxZoom:19,
-    attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a> · Data: <a href="https://entur.no">Entur</a>'}).addTo(map);
-}
-setTiles(); dark.addEventListener?.('change',setTiles);
+// Kartverket: åpne, gratis kartfliser for Norge (gråtone). Mørk modus inverteres med CSS.
+L.tileLayer('https://cache.kartverket.no/v1/wmts/1.0.0/topograatone/default/webmercator/{z}/{y}/{x}.png',{
+  maxZoom:18, attribution:'© <a href="https://www.kartverket.no/">Kartverket</a> · Data: <a href="https://entur.no">Entur</a>'}).addTo(map);
 map.attributionControl.setPrefix(false);
 
 /* ---------- Markører ---------- */
