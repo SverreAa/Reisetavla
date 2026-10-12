@@ -1,4 +1,6 @@
 // Lokal lagring på enheten. Alt er pakket i try/catch: privat modus eller blokkert lagring gir standardverdier.
+import { routeOnly } from './share.js';
+
 const KEY = 'reisetavla.v2';
 const OLD_SAVED = 'reisetavla.saved';
 
@@ -19,6 +21,8 @@ export function load() {
   if (!s.saved) {
     try { const old = JSON.parse(localStorage.getItem(OLD_SAVED) || '[]'); if (Array.isArray(old)) out.saved = old; } catch (e) { /* ingen gamle */ }
   }
+  // Favoritter er strekninger: fjern tid og transportmidler fra eldre lagrede reiser og slå sammen like
+  out.saved = (out.saved || []).map((x) => ({ ...x, q: routeOnly(x.q || '') })).filter((x, i, a) => x.q && a.findIndex((y) => y.q === x.q) === i);
   return out;
 }
 

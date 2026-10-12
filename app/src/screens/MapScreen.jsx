@@ -30,6 +30,7 @@ export default function MapScreen({ trip, search, live, alertOn, setAlertOn, onB
   const [clock, setClock] = useState(Date.now());
   const [gps, setGps] = useState(null);
   const [theme, setTheme] = useState(document.documentElement.getAttribute('data-theme'));
+  const [tiles, setTiles] = useState('kv');
   const demo = live === false;
 
   // Klokke og tema
@@ -69,7 +70,13 @@ export default function MapScreen({ trip, search, live, alertOn, setAlertOn, onB
   // Kartet
   useEffect(() => {
     const map = L.map(mapEl.current, { zoomControl: false, attributionControl: false, zoomSnap: 0.25 });
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+    // Kartverket: åpne kartfliser for Norge (gråtone). Leverer de ikke, brukes OpenStreetMap som reserve.
+    const kv = L.tileLayer('https://cache.kartverket.no/v1/wmts/1.0.0/topograatone/default/webmercator/{z}/{y}/{x}.png', { maxZoom: 18 });
+    const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 });
+    let kvErr = 0, kvOk = 0, usingOsm = false;
+    kv.on('tileerror', () => { if (++kvErr >= 4 && kvOk === 0 && !usingOsm) { usingOsm = true; map.removeLayer(kv); osm.addTo(map); setTiles('osm'); } });
+    kv.on('tileload', () => { kvOk++; });
+    kv.addTo(map);
     layerRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
     let raf = 0;
@@ -298,7 +305,7 @@ export default function MapScreen({ trip, search, live, alertOn, setAlertOn, onB
                 );
               })}
             </ol>
-            <p className="map-credit">Kart: © OpenStreetMap-bidragsytere · Rutedata: Entur AS</p>
+            <p className="map-credit">Kart: {tiles === 'kv' ? '© Kartverket' : '© OpenStreetMap-bidragsytere'} · Rutedata: Entur AS</p>
           </div>
         )}
       </section>

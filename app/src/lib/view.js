@@ -44,13 +44,17 @@ export function tripCardProps(t, { outside, maxWalk }) {
   const delayMs = first ? first.start - first.aimedStart : 0;
   const late = delayMs >= 60000;
   const notices = [];
+  const rrb = t.legs.filter((l) => l.sub === 'railReplacementBus');
+  if (rrb.length) notices.push(`Buss for tog: ${rrb.map((l) => `${l.from.name} – ${l.to.name}`).join(', ')}`);
   const cl = t.legs.find(freshControl);
   if (cl) notices.push(`Billettkontroll meldt ved ${cl.control.at} på ${lower(MODE_NAME[cl.mode])} ${cl.code} for ${controlAge(cl.control)} min siden`);
   if (outside) {
     const wl = longestWalk(t);
     if (wl) notices.push(`${wl.meters} m gange til ${wl.stop} er over maks gange (${fmtM(maxWalk)}).`);
   }
-  t.legs.forEach((l) => (l.situations || []).forEach((s) => { if (!notices.includes(s)) notices.push(s); }));
+  const sevRank = (s) => ({ verySevere: 4, severe: 3, normal: 2, slight: 1, noImpact: 0 }[s] ?? 2);
+  t.legs.flatMap((l) => l.situations || []).sort((a, b) => sevRank(b.severity) - sevRank(a.severity))
+    .forEach((s) => { if (!notices.includes(s.text)) notices.push(s.text); });
   return {
     dep: hm(t.start), arr: hm(t.end), wasDep: late ? hm(new Date(t.start.getTime() - delayMs)) : undefined,
     duration: durText(t.minutes), soon: soonText(t.start), realtime: transit.some((l) => l.realtime),

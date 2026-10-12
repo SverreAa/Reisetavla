@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Root, AppHeader, TabBar, Toast, Note } from 'reisetavla-ds';
+import { Root, StatusBadge, TabBar, Toast, Note } from 'reisetavla-ds';
 import * as entur from './lib/entur.js';
 import { demoTrips, DEMO_SEARCH, DEMO_STOPS } from './lib/demo.js';
 import { load, save } from './lib/store.js';
 import { MODES } from './lib/format.js';
 import { filterTrips, exclusionRows } from './lib/view.js';
-import { toParams, fromParams } from './lib/share.js';
+import { toParams, fromParams, routeOnly, tripLink } from './lib/share.js';
 import Results from './screens/Results.jsx';
 import Board from './screens/Board.jsx';
 import Saved from './screens/Saved.jsx';
@@ -85,7 +85,12 @@ export default function App() {
         if (id === runId.current) setAltTrips(alt);
       } else setAltTrips(null);
     } catch (e) {
-      if (id === runId.current) { setError(e.message || 'Ukjent feil'); setTrips([]); }
+      if (id === runId.current) {
+        console.warn('Reisetavla:', e);
+        const net = e instanceof TypeError || /HTTP|fetch|network/i.test(e.message || '');
+        setError(net ? 'Sjekk nettforbindelsen og prøv igjen.' : /stopp i nærheten|posisjon/i.test(e.message) ? `${e.message}.` : 'Entur svarte ikke som forventet. Prøv igjen om litt.');
+        setTrips([]);
+      }
     } finally {
       if (id === runId.current) setLoading(false);
     }
@@ -125,10 +130,16 @@ export default function App() {
     requestAnimationFrame(() => { window.scrollTo(0, y); requestAnimationFrame(() => window.scrollTo(0, y)); });
   };
 
-  const q = toParams(search, allModes);
-  const isSaved = saved.some((s) => s.q === q);
+  const q = routeOnly(toParams(search, allModes));
+  const isSaved = saved.some((s) => routeOnly(s.q) === q);
+  const shareTrip = async (t) => {
+    const url = tripLink(t, search);
+    const text = `${search.from?.name || t.legs[0].from.name} → ${search.to?.name || t.legs[t.legs.length - 1].to.name}`;
+    if (navigator.share) { try { await navigator.share({ title: 'Min reise', text, url }); } catch (e) { /* avbrutt */ } return; }
+    try { await navigator.clipboard.writeText(url); setToast('Lenken til reisen er kopiert'); } catch (e) { setToast('Kunne ikke kopiere lenken'); }
+  };
   const toggleSave = () => {
-    if (isSaved) { setSaved(saved.filter((s) => s.q !== q)); setToast('Fjernet fra Mine reiser'); }
+    if (isSaved) { setSaved(saved.filter((s) => routeOnly(s.q) !== q)); setToast('Fjernet fra Mine reiser'); }
     else { setSaved([{ name: `${search.from?.name || 'Min posisjon'} → ${search.to?.name || 'avganger'}`, q }, ...saved]); setToast('Lagret i Mine reiser'); }
   };
 
@@ -142,7 +153,15 @@ export default function App() {
       ) : (
         <div className="app-screen">
           <main className="rt-screen app-main">
-            <AppHeader live={status.live} statusLabel={status.label} />
+            <div className="rt-header">
+              <div className="rt-wordmark">Reise<span>tavla</span></div>
+              <div className="app-topr">
+                <a className="app-maplink" href="kart.html" aria-label="Reisekart: kjøretøy i sanntid">
+                  <svg className="rt-i" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 3.5 2.5 5.5v11l4.5-2 6 2 4.5-2v-11l-4.5 2z" /><path d="M7 3.5v11M13 5.5v11" /></svg>Kart
+                </a>
+                <StatusBadge live={status.live} label={status.label} />
+              </div>
+            </div>
             {live === false && <Note>{FORCE_DEMO ? 'Viser eksempeldata (demo).' : 'Viser eksempeldata. Fikk ikke kontakt med Entur, så søk og kart bruker oppdiktede reiser.'}</Note>}
             {tab === 'reiser' && (
               <Results
@@ -150,7 +169,7 @@ export default function App() {
                 shown={shown} maxWalk={maxWalk} setMaxWalk={setMaxWalk} excluded={excluded}
                 openTripKey={openTripKey} setOpenTripKey={setOpenTripKey} openMap={openMap}
                 openFilter={() => setSheet('filter')} openFeedback={() => setSheet('feedback')} openShare={() => setSheet('share')}
-                isSaved={isSaved} toggleSave={toggleSave} goBoard={() => setTab('avganger')}
+                isSaved={isSaved} toggleSave={toggleSave} goBoard={() => setTab('avganger')} shareTrip={live ? shareTrip : null}
               />
             )}
             {tab === 'avganger' && <Board {...searchApi} allModes={allModes} />}

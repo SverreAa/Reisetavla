@@ -39,7 +39,7 @@ const CALL_FIELDS = 'cancellation destinationDisplay{ frontText }';
 const tripQuery = (withOcc) => `query($from:Location!,$to:Location!,$dateTime:DateTime,$arriveBy:Boolean,$modes:Modes,$banned:InputBanned){
  trip(from:$from,to:$to,dateTime:$dateTime,arriveBy:$arriveBy,modes:$modes,banned:$banned,numTripPatterns:8){
   tripPatterns{ aimedStartTime expectedStartTime aimedEndTime expectedEndTime duration
-   legs{ mode distance duration realtime aimedStartTime expectedStartTime aimedEndTime expectedEndTime
+   legs{ mode transportSubmode serviceDate distance duration realtime aimedStartTime expectedStartTime aimedEndTime expectedEndTime
     line{ id publicCode name transportMode authority{ name } presentation{ colour textColour } }
     fromPlace{ name latitude longitude quay{ id publicCode } }
     toPlace{ name latitude longitude quay{ id publicCode } }
@@ -47,27 +47,46 @@ const tripQuery = (withOcc) => `query($from:Location!,$to:Location!,$dateTime:Da
     intermediateEstimatedCalls{ quay{ name latitude longitude } aimedArrivalTime expectedArrivalTime expectedDepartureTime }
     pointsOnLink{ points }
     serviceJourney{ id }
-    situations{ summary{ value language } }
+    situations{ severity summary{ value language } }
    } } } }`;
 
 const loc = (p) => (p.id && String(p.id).startsWith('NSR:') ? { place: p.id, name: p.name } : { name: p.name, coordinates: { latitude: p.lat, longitude: p.lon } });
 
 let occOk = true;
 export async function fetchTrips({ from, to, when, date, time, modes, allModes, bannedLines }) {
-  const vars = {
+  // Entur gir bare de «beste» forslagene. For å få både tog og buss med søker vi også
+  // i hver hovedgruppe for seg og slår sammen resultatene (som i første live-versjon).
+  const base = {
     from: loc(from), to: loc(to),
-    dateTime: when === 'now' ? null : new Date(`${date}T${time}`).toISOString(),
+    dateTime: (when === 'now' ? new Date() : new Date(`${date}T${time}`)).toISOString(),
     arriveBy: when === 'arrive',
-    modes: allModes ? null : { accessMode: 'foot', egressMode: 'foot', transportModes: modes.map((m) => ({ transportMode: m })) },
     banned: bannedLines && bannedLines.length ? { lines: bannedLines } : null,
   };
-  let d;
-  try { d = await gql(JP, tripQuery(occOk), vars); }
-  catch (e) {
-    if (occOk && /occupancy/i.test(e.message)) { occOk = false; d = await gql(JP, tripQuery(false), vars); }
-    else throw e;
+  const mk = (list) => ({ accessMode: 'foot', egressMode: 'foot', directMode: 'foot', transportModes: list.map((m) => ({ transportMode: m })) });
+  const sel = modes.slice(), groups = [sel];
+  const rail = sel.filter((m) => m === 'rail'), road = sel.filter((m) => m === 'bus' || m === 'coach');
+  if (rail.length && sel.length > 1) groups.push(rail);
+  if (road.length && road.length < sel.length) groups.push(road);
+  const one = async (g) => {
+    const vars = { ...base, modes: mk(g) };
+    try { return await gql(JP, tripQuery(occOk), vars); }
+    catch (e) { if (occOk && /occupancy/i.test(e.message)) { occOk = false; return gql(JP, tripQuery(false), vars); } throw e; }
+  };
+  const res = await Promise.allSettled(groups.map(one));
+  if (res[0].status === 'rejected') throw res[0].reason;
+  const seen = new Set(), out = [];
+  for (const r of res) {
+    if (r.status !== 'fulfilled') continue;
+    for (const p of r.value.trip.tripPatterns || []) {
+      const k = p.expectedStartTime + '|' + p.legs.filter((l) => l.mode !== 'foot').map((l) => l.mode + (l.line?.publicCode || '')).join('>');
+      if (!seen.has(k)) { seen.add(k); out.push(p); }
+    }
   }
-  return (d.trip.tripPatterns || []).map(normalizeTrip);
+  if (!out.length) return [];
+  const fastest = Math.min(...out.map((p) => p.duration));
+  return out.filter((p) => p.duration <= fastest * 2.2 + 600)
+    .sort((a, b) => new Date(a.expectedStartTime) - new Date(b.expectedStartTime)).slice(0, 10)
+    .map(normalizeTrip);
 }
 
 const OCC = { empty: 1, manySeatsAvailable: 1, manyEmptySeats: 1, fewSeatsAvailable: 2, standingRoomOnly: 3, crushedStandingRoomOnly: 3, full: 3, notAcceptingPassengers: 3 };
@@ -102,8 +121,10 @@ function normalizeLeg(l) {
     control: null,
     flight: null,
     serviceJourneyId: l.serviceJourney?.id || null,
+    serviceDate: l.serviceDate || null,
+    sub: l.transportSubmode || null,
     realtime: !!l.realtime,
-    situations: [...new Set((l.situations || []).map((s) => (s.summary || []).find((x) => /^n(o|ob)$/.test(x.language || ''))?.value || s.summary?.[0]?.value).filter(Boolean))],
+    situations: (l.situations || []).map((s) => ({ text: (s.summary || []).find((x) => /^n(o|ob)$/.test(x.language || ''))?.value || s.summary?.[0]?.value, severity: s.severity })).filter((s) => s.text),
   };
   if (mode === 'air') {
     const delay = minutesBetween(l.aimedStartTime, l.expectedStartTime);

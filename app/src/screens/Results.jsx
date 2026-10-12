@@ -48,7 +48,10 @@ export default function Results(p) {
             {...tripCardProps(t, { outside: shown.outside, maxWalk })}
             expanded={p.openTripKey === t.key}
             onToggle={(open) => p.setOpenTripKey(open ? t.key : null)}
-            actions={<Button icon="pin" onClick={() => p.openMap(t)}>Vis i kart</Button>}
+            actions={<>
+              <Button icon="pin" onClick={() => p.openMap(t)}>Vis i kart</Button>
+              {p.shareTrip && <Button variant="ghost" icon="share" onClick={() => p.shareTrip(t)}>Del reisen</Button>}
+            </>}
           />
         ))}
       </ul>

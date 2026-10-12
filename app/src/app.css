@@ -8,6 +8,11 @@ body { min-height: 100%; }
 .app-main { width: 100%; flex: 1; padding-top: calc(var(--space-14) + env(safe-area-inset-top, 0px)); padding-bottom: var(--space-20); }
 .app-tabbar { position: sticky; bottom: 0; z-index: 30; }
 .app-tabbar .rt-tabbar { max-width: var(--content-max); margin: 0 auto; }
+.app-topr { display: flex; align-items: center; gap: var(--space-8); }
+.app-maplink { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; font-size: 13px; font-weight: 700; color: var(--ink); background: var(--surface); padding: 6px 11px 6px 9px; border-radius: var(--radius-full); box-shadow: var(--shadow); text-decoration: none; }
+.app-maplink .rt-i { width: 17px; height: 17px; color: var(--accent); }
+.app-longpress { display: inline-flex; -webkit-touch-callout: none; user-select: none; }
+.app-mode-all { font-weight: 700; }
 .app-credit { margin: 0; font-size: 12px; color: var(--muted); text-align: center; }
 
 .app-eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
