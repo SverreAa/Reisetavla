@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<!-- @template name="Reise med kart" description="Klikkbar prototype: reiseforslag med belegg, billettkontroll og flyinfo, reisevalg, kartvisning med ruter, kjøretøy og avstigningsvarsel, og tilbakemelding." -->
+<helmet><script src="./ds-base.js"></script><style>body{margin:0}textarea{font:inherit}</style></helmet>
+<div style="min-height:100vh;display:grid;place-items:center;padding:32px 16px;background:#c9d1dc;box-sizing:border-box">
+<div style="width:390px;height:844px;border-radius:46px;overflow:hidden;position:relative;transform:translateZ(0);box-shadow:0 0 0 10px #0e1a2b,0 40px 80px -30px rgba(14,26,43,.6)">
+<x-import component-from-global-scope="Reisetavla.Root" theme="{{ theme }}" hint-size="390px,844px">
+<div style="height:844px;display:flex;flex-direction:column;background:var(--bg);position:relative;overflow:hidden">
+<sc-if value="{{ isResults }}" hint-placeholder-val="{{ true }}">
+<div style="height:44px;flex:none;display:flex;align-items:center;padding:0 30px;font-family:var(--font-display);font-weight:700;font-size:15px;font-variant-numeric:tabular-nums">07:35</div>
+<div ref="{{ scrollRef }}" style="flex:1;min-height:0;overflow-y:auto;padding:6px 16px 28px;display:flex;flex-direction:column;gap:14px">
+<x-import component-from-global-scope="Reisetavla.AppHeader" live="{{ true }}" hint-size="100%,32px"></x-import>
+<x-import component-from-global-scope="Reisetavla.SearchCard" dc-props="{{ searchProps }}" hint-size="100%,190px">
+<button type="button" onClick="{{ openFilter }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:48px;padding:8px 12px;border-radius:var(--radius-12);background:var(--surface-2);text-align:left"><span style="display:grid;gap:1px;min-width:0"><span style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">Reisevalg</span><span style="font-size:15px;font-weight:700">{{ filterSummary }}</span></span><span style="color:var(--accent);font-weight:700;font-size:15px">Endre</span></button>
+</x-import>
+<sc-if value="{{ outside }}"><div style="background:var(--surface);border-radius:var(--radius-16);box-shadow:var(--shadow);padding:12px;display:grid;gap:10px"><x-import component-from-global-scope="Reisetavla.WarningLine" hint-size="100%,60px">{{ outsideText }}</x-import><div style="display:flex"><x-import component-from-global-scope="Reisetavla.Button" variant="ghost" onClick="{{ raiseWalk }}" hint-size="180px,44px">{{ raiseLabel }}</x-import></div></div></sc-if>
+<x-import component-from-global-scope="Reisetavla.ResultHeader" title="Pilestredet 35 → Bergen lufthavn" subtitle="{{ resultSubtitle }}" hint-size="100%,48px"></x-import>
+<sc-if value="{{ hasHidden }}"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:14px;color:var(--muted);padding:0 4px;margin-block:-8px"><span>{{ hiddenText }}</span><button type="button" onClick="{{ openFilter }}" style="color:var(--accent);font-weight:700;min-height:44px">Endre</button></div></sc-if>
+<sc-if value="{{ isEmpty }}"><div style="background:var(--surface);border-radius:var(--radius-20);box-shadow:var(--shadow);padding:18px 16px;font-size:15px;color:var(--muted)">Ingen reiser uten de ekskluderte rutene. Ta med en rute igjen under Reisevalg.</div></sc-if>
+<ul style="margin:0;padding:0;list-style:none;display:grid;gap:10px" aria-live="polite">
+<sc-for list="{{ trips }}" as="t" hint-placeholder-count="3">
+<li style="background:var(--surface);border-radius:var(--radius-20);box-shadow:var(--shadow);overflow:hidden">
+<button type="button" aria-expanded="{{ t.expanded }}" onClick="{{ t.toggle }}" style="display:grid;gap:10px;width:100%;text-align:left;padding:14px 16px 12px">
+<span style="display:flex;align-items:baseline;justify-content:space-between;gap:12px"><b style="font-family:var(--font-display);font-weight:800;font-size:24px;line-height:1.1;font-variant-numeric:tabular-nums;white-space:nowrap">{{ t.dep }} – {{ t.arr }}</b><span style="font-family:var(--font-display);font-weight:700;font-size:16px;color:var(--muted);white-space:nowrap">{{ t.duration }}</span></span>
+<span style="display:flex;flex-wrap:wrap;gap:2px 10px;font-size:14px;color:var(--muted)"><b style="color:var(--ink)">{{ t.soon }}</b><span>{{ t.transfers }}</span><span style="color:var(--ok);font-weight:700">Sanntid</span><span>{{ t.platform }}</span></span>
+<span style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><sc-for list="{{ t.chips }}" as="c"><sc-if value="{{ c.isFoot }}"><x-import component-from-global-scope="Reisetavla.WalkChip" minutes="{{ c.minutes }}" hint-size="34px,20px"></x-import></sc-if><sc-if value="{{ c.isLine }}"><x-import component-from-global-scope="Reisetavla.LinePill" mode="{{ c.mode }}" code="{{ c.code }}" hint-size="48px,24px"></x-import></sc-if><sc-if value="{{ c.sep }}"><span style="color:var(--muted);font-size:13px">›</span></sc-if></sc-for></span>
+{{ t.barEl }}
+<span style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;font-size:13px"><span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">Passasjerer</span><sc-for list="{{ t.crowd }}" as="k"><span style="display:inline-flex;align-items:center;gap:5px"><b style="font-family:var(--font-display);font-weight:800">{{ k.code }}</b><sc-if value="{{ k.c1 }}"><span style="display:inline-flex;align-items:flex-end;gap:2px;height:13px"><i style="width:4px;height:7px;border-radius:1px;background:var(--ok)"></i><i style="width:4px;height:10px;border-radius:1px;background:var(--line)"></i><i style="width:4px;height:13px;border-radius:1px;background:var(--line)"></i></span></sc-if><sc-if value="{{ k.c2 }}"><span style="display:inline-flex;align-items:flex-end;gap:2px;height:13px"><i style="width:4px;height:7px;border-radius:1px;background:var(--warn)"></i><i style="width:4px;height:10px;border-radius:1px;background:var(--warn)"></i><i style="width:4px;height:13px;border-radius:1px;background:var(--line)"></i></span></sc-if><sc-if value="{{ k.c3 }}"><span style="display:inline-flex;align-items:flex-end;gap:2px;height:13px"><i style="width:4px;height:7px;border-radius:1px;background:var(--crit)"></i><i style="width:4px;height:10px;border-radius:1px;background:var(--crit)"></i><i style="width:4px;height:13px;border-radius:1px;background:var(--crit)"></i></span></sc-if><span style="color:var(--muted)">{{ k.label }}</span></span></sc-for></span>
+</button>
+<sc-if value="{{ t.hasNotes }}"><div style="padding:0 16px 14px;display:grid;gap:8px"><sc-if value="{{ t.hasControl }}"><x-import component-from-global-scope="Reisetavla.WarningLine" hint-size="100%,40px">{{ t.control }}</x-import></sc-if><sc-if value="{{ t.hasWalkNote }}"><x-import component-from-global-scope="Reisetavla.WarningLine" hint-size="100%,40px">{{ t.walkNote }}</x-import></sc-if></div></sc-if>
+<sc-if value="{{ t.expanded }}"><div style="border-top:1px solid var(--line);padding:14px 16px 16px;display:grid;gap:14px">
+<ol style="margin:0;padding:0;list-style:none;display:grid;gap:14px"><sc-for list="{{ t.legs }}" as="l"><li style="display:grid;grid-template-columns:44px 6px minmax(0,1fr);gap:0 10px">
+<div style="display:flex;flex-direction:column;justify-content:space-between;font-family:var(--font-display);font-weight:700;font-size:14px;font-variant-numeric:tabular-nums"><span>{{ l.start }}</span><span style="color:var(--muted)">{{ l.end }}</span></div>
+<div style="display:grid"><sc-if value="{{ l.is_foot }}"><div style="background:repeating-linear-gradient(180deg,var(--m-foot) 0 4px,transparent 4px 8px);border-radius:3px"></div></sc-if><sc-if value="{{ l.is_tram }}"><div style="background:var(--m-tram);border-radius:3px"></div></sc-if><sc-if value="{{ l.is_metro }}"><div style="background:var(--m-metro);border-radius:3px"></div></sc-if><sc-if value="{{ l.is_rail }}"><div style="background:var(--m-rail);border-radius:3px"></div></sc-if><sc-if value="{{ l.is_coach }}"><div style="background:var(--m-coach);border-radius:3px"></div></sc-if><sc-if value="{{ l.is_air }}"><div style="background:var(--m-air);border-radius:3px"></div></sc-if></div>
+<div style="display:grid;gap:4px;min-width:0">
+<sc-if value="{{ l.isFoot }}"><b style="font-size:15px">{{ l.title }}</b><span style="font-size:14px;color:var(--muted)">{{ l.sub }}</span></sc-if>
+<sc-if value="{{ l.isTransit }}"><span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><x-import component-from-global-scope="Reisetavla.LinePill" mode="{{ l.mode }}" code="{{ l.code }}" hint-size="48px,24px"></x-import><span style="font-size:14px;color:var(--muted)">{{ l.dir }}</span></span><span style="font-size:15px;font-weight:700">{{ l.from }}</span><span style="font-size:14px;color:var(--muted)">{{ l.to }}</span>
+<span style="display:inline-flex;align-items:center;gap:6px;font-size:14px"><sc-if value="{{ l.c1 }}"><span style="display:inline-flex;align-items:flex-end;gap:2px;height:13px"><i style="width:4px;height:7px;border-radius:1px;background:var(--ok)"></i><i style="width:4px;height:10px;border-radius:1px;background:var(--line)"></i><i style="width:4px;height:13px;border-radius:1px;background:var(--line)"></i></span></sc-if><sc-if value="{{ l.c2 }}"><span style="display:inline-flex;align-items:flex-end;gap:2px;height:13px"><i style="width:4px;height:7px;border-radius:1px;background:var(--warn)"></i><i style="width:4px;height:10px;border-radius:1px;background:var(--warn)"></i><i style="width:4px;height:13px;border-radius:1px;background:var(--line)"></i></span></sc-if><sc-if value="{{ l.c3 }}"><span style="display:inline-flex;align-items:flex-end;gap:2px;height:13px"><i style="width:4px;height:7px;border-radius:1px;background:var(--crit)"></i><i style="width:4px;height:10px;border-radius:1px;background:var(--crit)"></i><i style="width:4px;height:13px;border-radius:1px;background:var(--crit)"></i></span></sc-if><span>{{ l.crowdLabel }}</span></span>
+<sc-if value="{{ l.hasControl }}"><x-import component-from-global-scope="Reisetavla.WarningLine" hint-size="100%,40px">{{ l.control }}</x-import></sc-if>
+<sc-if value="{{ l.isAir }}"><div style="margin-top:4px;background:var(--surface-2);border-radius:var(--radius-12);padding:10px 12px;display:grid;gap:6px"><sc-for list="{{ l.flightRows }}" as="r"><div style="display:flex;justify-content:space-between;gap:12px;font-size:14px"><span style="color:var(--muted)">{{ r.k }}</span><b style="text-align:right;font-variant-numeric:tabular-nums">{{ r.v }}</b></div></sc-for></div></sc-if>
+</sc-if>
+</div></li></sc-for></ol>
+<div style="display:flex"><x-import component-from-global-scope="Reisetavla.Button" icon="pin" onClick="{{ t.openMap }}" hint-size="140px,44px">Vis i kart</x-import></div>
+</div></sc-if>
+</li>
+</sc-for>
+</ul>
+<div style="background:var(--surface);border-radius:var(--radius-20);box-shadow:var(--shadow);padding:14px 16px;display:grid;gap:12px"><div><b style="font-family:var(--font-display);font-weight:700;font-size:17px">Hjelp oss å gjøre appen bedre</b><p style="margin:2px 0 0;font-size:14px;color:var(--muted)">Fortell hva som mangler eller ikke virker.</p></div><x-import component-from-global-scope="Reisetavla.Button" variant="ghost" onClick="{{ openFeedback }}" hint-size="100%,44px">Gi tilbakemelding</x-import></div>
+<p style="margin:0;font-size:12px;color:var(--muted);text-align:center">Rutedata: Entur AS (NLOD-lisens) · alle operatører i Norge</p>
+</div>
+<x-import component-from-global-scope="Reisetavla.TabBar" active="reiser" hint-size="100%,64px"></x-import>
+</sc-if>
+<sc-if value="{{ isMap }}">
+<div style="position:absolute;inset:0;overflow:hidden;background-color:var(--surface-2);background-image:linear-gradient(color-mix(in srgb,var(--line) 60%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--line) 60%,transparent) 1px,transparent 1px);background-size:48px 48px">
+{{ mapSvg }}
+
+
+
+{{ mapOverlay }}
+<div style="position:absolute;left:0;right:0;top:0;padding:44px 12px 0;display:grid;gap:10px">
+<div style="display:flex;align-items:center;gap:10px"><button type="button" onClick="{{ goBack }}" style="display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 16px 0 12px;border-radius:999px;background:var(--surface);box-shadow:var(--shadow);font-weight:700;font-size:15px"><span style="font-size:20px;line-height:1">‹</span>Tilbake</button><span style="font-size:14px;font-weight:700;background:var(--surface);box-shadow:var(--shadow);border-radius:999px;padding:6px 12px;font-variant-numeric:tabular-nums">{{ map.title }}</span></div>
+<div style="display:flex;gap:8px;overflow-x:auto;padding:2px 0 4px;scrollbar-width:none"><sc-for list="{{ map.chips }}" as="rc"><sc-if value="{{ rc.pressed }}"><button type="button" aria-pressed="true" onClick="{{ rc.onClick }}" style="display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:4px 12px 4px 5px;border-radius:999px;background:var(--surface);box-shadow:0 0 0 2px var(--accent);white-space:nowrap;font-size:14px;font-weight:700"><x-import component-from-global-scope="Reisetavla.LinePill" mode="{{ rc.mode }}" code="{{ rc.code }}" hint-size="48px,24px"></x-import>{{ rc.label }}</button></sc-if><sc-if value="{{ rc.unpressed }}"><button type="button" aria-pressed="false" onClick="{{ rc.onClick }}" style="display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:4px 12px 4px 5px;border-radius:999px;background:var(--surface);box-shadow:var(--shadow);white-space:nowrap;font-size:14px;font-weight:700"><x-import component-from-global-scope="Reisetavla.LinePill" mode="{{ rc.mode }}" code="{{ rc.code }}" hint-size="48px,24px"></x-import>{{ rc.label }}</button></sc-if></sc-for></div>
+</div>
+
+<div style="position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-radius:24px 24px 0 0;box-shadow:0 -12px 32px -20px rgba(14,26,43,.55);display:flex;flex-direction:column;max-height:380px">
+<button type="button" onClick="{{ toggleSheet }}" aria-expanded="{{ sheetOpen }}" style="display:grid;justify-items:center;gap:6px;padding:10px 16px 6px;min-height:44px;width:100%;flex:none"><span style="width:40px;height:5px;border-radius:3px;background:var(--line)"></span><span style="font-size:13px;font-weight:700;color:var(--muted)">{{ sheetToggleLabel }}</span></button>
+<sc-if value="{{ map.hasAlert }}"><div role="alert" style="margin:0 12px 10px;background:var(--ink);color:var(--bg);border-radius:var(--radius-14);padding:10px 14px;display:flex;align-items:baseline;gap:8px;flex:none;min-width:0"><b style="font-family:var(--font-display);font-weight:800;font-size:16px;white-space:nowrap">{{ map.alertTitle }}</b><span style="font-size:15px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ map.alertText }}</span></div></sc-if><div style="padding:0 18px 12px;display:grid;gap:8px;flex:none"><div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px"><b style="font-family:var(--font-display);font-weight:800;font-size:22px;font-variant-numeric:tabular-nums">{{ map.trip.dep }} – {{ map.trip.arr }}</b><span style="font-family:var(--font-display);font-weight:700;color:var(--muted)">{{ map.trip.duration }}</span></div><span style="font-size:14px;color:var(--muted)">{{ map.status }}</span></div>
+<sc-if value="{{ sheetOpen }}"><div style="overflow-y:auto;padding:0 18px 28px;display:grid;gap:14px">
+<sc-if value="{{ map.hasRoute }}"><div style="background:var(--surface-2);border-radius:var(--radius-16);padding:12px;display:grid;gap:10px"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><b style="font-family:var(--font-display);font-weight:700;font-size:17px">{{ map.routeTitle }}</b><x-import component-from-global-scope="Reisetavla.StatusBadge" live="{{ true }}" label="Sanntid" hint-size="80px,26px"></x-import></div><span style="font-size:13px;color:var(--muted)">Ring rundt: på vei mot deg. Blek: på vei fra deg.</span>
+<sc-for list="{{ map.groups }}" as="g"><div style="display:grid;gap:4px"><div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)"><span>{{ g.title }}</span><span>{{ g.note }}</span></div><sc-for list="{{ g.rows }}" as="vr"><div style="display:flex;justify-content:space-between;gap:10px;font-size:14px;padding:6px 0;border-bottom:1px solid var(--line)"><span>{{ vr.where }}</span><sc-if value="{{ vr.toward }}"><b style="color:var(--ink);white-space:nowrap">{{ vr.status }}</b></sc-if><sc-if value="{{ vr.away }}"><b style="color:var(--muted);white-space:nowrap">{{ vr.status }}</b></sc-if></div></sc-for></div></sc-for>
+</div></sc-if>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px"><div><b style="font-size:15px">Varsle én stasjon før jeg skal av</b><div style="font-size:13px;color:var(--muted)">Vibrerer og viser et varsel</div></div><sc-if value="{{ alertOn }}"><button type="button" role="switch" aria-checked="true" aria-label="Varsle før avstigning" onClick="{{ toggleAlert }}" style="width:50px;height:30px;border-radius:999px;background:var(--accent);position:relative;flex:none"><span style="position:absolute;top:3px;left:23px;width:24px;height:24px;border-radius:50%;background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.3)"></span></button></sc-if><sc-if value="{{ alertOff }}"><button type="button" role="switch" aria-checked="false" aria-label="Varsle før avstigning" onClick="{{ toggleAlert }}" style="width:50px;height:30px;border-radius:999px;background:var(--muted);position:relative;flex:none"><span style="position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.3)"></span></button></sc-if></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap"><x-import component-from-global-scope="Reisetavla.Button" variant="ghost" onClick="{{ nextStep }}" hint-size="170px,44px">Neste stopp (demo)</x-import><x-import component-from-global-scope="Reisetavla.Button" variant="ghost" onClick="{{ resetStep }}" hint-size="130px,44px">Start på nytt</x-import></div>
+<sc-if value="{{ map.hasControl }}"><x-import component-from-global-scope="Reisetavla.WarningLine" hint-size="100%,40px">{{ map.control }}</x-import></sc-if>
+<ol style="margin:0;padding:0;list-style:none;display:grid;gap:10px"><sc-for list="{{ map.legs }}" as="ml"><sc-if value="{{ ml.done }}"><li style="display:flex;align-items:center;gap:10px;opacity:.5"><sc-if value="{{ ml.isFoot }}"><x-import component-from-global-scope="Reisetavla.WalkChip" minutes="{{ ml.minutes }}" hint-size="34px,20px"></x-import></sc-if><sc-if value="{{ ml.isLine }}"><x-import component-from-global-scope="Reisetavla.LinePill" mode="{{ ml.mode }}" code="{{ ml.code }}" hint-size="48px,24px"></x-import></sc-if><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700">{{ ml.line }}</div><div style="font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums">{{ ml.meta }}</div></div></li></sc-if><sc-if value="{{ ml.ahead }}"><li style="display:flex;align-items:center;gap:10px"><sc-if value="{{ ml.isFoot }}"><x-import component-from-global-scope="Reisetavla.WalkChip" minutes="{{ ml.minutes }}" hint-size="34px,20px"></x-import></sc-if><sc-if value="{{ ml.isLine }}"><x-import component-from-global-scope="Reisetavla.LinePill" mode="{{ ml.mode }}" code="{{ ml.code }}" hint-size="48px,24px"></x-import></sc-if><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700">{{ ml.line }}</div><div style="font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums">{{ ml.meta }}</div></div></li></sc-if></sc-for></ol>
+</div></sc-if>
+<sc-if value="{{ sheetClosed }}"><div style="height:18px"></div></sc-if>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ isFilter }}"><x-import component-from-global-scope="Reisetavla.BottomSheet" title="Reisevalg" onClose="{{ closeSheet }}" hint-size="100%,480px">
+<div style="display:grid;gap:8px"><span style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">Maks gange til og fra stopp</span><x-import component-from-global-scope="Reisetavla.SegmentedControl" options="{{ walkOpts }}" value="{{ maxWalkId }}" onChange="{{ setMaxWalk }}" label="Maks gange" hint-size="100%,44px"></x-import><p style="margin:0;font-size:14px;color:var(--muted)">Finnes det ingen stopp innenfor grensen, viser vi det beste alternativet og sier fra.</p></div>
+<div style="display:grid;gap:2px"><span style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">Ekskluder ruter</span><sc-for list="{{ routeRows }}" as="r"><div style="display:flex;align-items:center;gap:12px;min-height:52px"><x-import component-from-global-scope="Reisetavla.LinePill" mode="{{ r.mode }}" code="{{ r.code }}" hint-size="48px,24px"></x-import><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:15px">{{ r.name }}</div><div style="font-size:13px;color:var(--muted)">{{ r.desc }}</div></div><span style="font-size:13px;font-weight:700;color:var(--muted)">{{ r.stateText }}</span><sc-if value="{{ r.excluded }}"><button type="button" role="switch" aria-checked="true" aria-label="{{ r.aria }}" onClick="{{ r.toggle }}" style="width:50px;height:30px;border-radius:999px;background:var(--accent);position:relative;flex:none"><span style="position:absolute;top:3px;left:23px;width:24px;height:24px;border-radius:50%;background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.3)"></span></button></sc-if><sc-if value="{{ r.included }}"><button type="button" role="switch" aria-checked="false" aria-label="{{ r.aria }}" onClick="{{ r.toggle }}" style="width:50px;height:30px;border-radius:999px;background:var(--muted);position:relative;flex:none"><span style="position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.3)"></span></button></sc-if></div></sc-for></div>
+<x-import component-from-global-scope="Reisetavla.Button" onClick="{{ closeSheet }}" hint-size="100%,44px">{{ applyLabel }}</x-import>
+</x-import></sc-if>
+<sc-if value="{{ isFeedback }}"><x-import component-from-global-scope="Reisetavla.BottomSheet" title="Gi tilbakemelding" onClose="{{ closeSheet }}" hint-size="100%,460px">
+<p style="margin:0;font-size:15px;color:var(--muted)">Hva kan vi gjøre bedre? Vi leser alt, men svarer ikke på hver melding.</p>
+<div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{ fbCats }}" as="fc"><sc-if value="{{ fc.pressed }}"><button type="button" aria-pressed="true" onClick="{{ fc.onClick }}" style="min-height:38px;padding:8px 14px;border-radius:999px;font-size:14px;font-weight:700;background:var(--ink);color:var(--bg)">{{ fc.label }}</button></sc-if><sc-if value="{{ fc.unpressed }}"><button type="button" aria-pressed="false" onClick="{{ fc.onClick }}" style="min-height:38px;padding:8px 14px;border-radius:999px;font-size:14px;font-weight:700;background:var(--surface-2);color:var(--ink)">{{ fc.label }}</button></sc-if></sc-for></div>
+<label style="display:grid;gap:6px"><span style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">Din tilbakemelding</span><textarea rows="4" value="{{ fbText }}" onChange="{{ onFbText }}" placeholder="Beskriv hva du opplevde eller ønsker deg" style="font-size:17px;padding:10px 12px;border-radius:var(--radius-12);border:0;background:var(--surface-2);color:var(--ink);resize:none"></textarea></label>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px"><span style="font-size:15px">Legg ved dette reisesøket</span><sc-if value="{{ fbAttach }}"><button type="button" role="switch" aria-checked="true" aria-label="Legg ved reisesøket" onClick="{{ toggleAttach }}" style="width:50px;height:30px;border-radius:999px;background:var(--accent);position:relative;flex:none"><span style="position:absolute;top:3px;left:23px;width:24px;height:24px;border-radius:50%;background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.3)"></span></button></sc-if><sc-if value="{{ fbNoAttach }}"><button type="button" role="switch" aria-checked="false" aria-label="Legg ved reisesøket" onClick="{{ toggleAttach }}" style="width:50px;height:30px;border-radius:999px;background:var(--muted);position:relative;flex:none"><span style="position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.3)"></span></button></sc-if></div>
+<x-import component-from-global-scope="Reisetavla.Button" onClick="{{ sendFeedback }}" hint-size="100%,44px">Send tilbakemelding</x-import>
+</x-import></sc-if>
+<sc-if value="{{ hasToast }}"><x-import component-from-global-scope="Reisetavla.Toast" hint-size="200px,40px">{{ toast }}</x-import></sc-if>
+</div>
+</x-import>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;auto&quot;,&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;auto&quot;,&quot;tsType&quot;:&quot;'auto'|'light'|'dark'&quot;},&quot;showTicketControl&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;startOnMap&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+const h = React.createElement;
+const MODE = { tram: 'Trikk', metro: 'T-bane', rail: 'Tog', coach: 'Flybuss', bus: 'Buss', air: 'Fly', foot: 'Gange' };
+const ALL = { tram: 'Alle trikker på linjen', metro: 'Alle T-baner på linjen', rail: 'Alle tog på linjen', coach: 'Alle busser på linjen' };
+const CROWD = [null, { label: 'God plass', c: 'var(--ok)' }, { label: 'Noe trangt', c: 'var(--warn)' }, { label: 'Trangt', c: 'var(--crit)' }];
+const P = (n, x, y) => ({ n, x, y }), G = (x, y) => ({ x, y });
+const mc = m => 'var(--m-' + m + ')';
+const toMin = s => { const [a, b] = s.split(':').map(Number); return a * 60 + b; };
+const SIDE = { tl: 'translate(calc(-100% - 8px), calc(-100% - 8px))', tr: 'translate(8px, calc(-100% - 8px))', bl: 'translate(calc(-100% - 8px), 8px)', br: 'translate(8px, 8px)', l: 'translate(calc(-100% - 12px), -50%)', r: 'translate(12px, -50%)' };
+const ROUTES = {
+  '19': { mode: 'tram', code: '19', ends: ['Majorstuen', 'Ljabru'], pts: [P('Majorstuen', 30, 226), P('Valkyrie plass', 56, 250), P('Homansbyen', 84, 274), P('Holbergs plass', 112, 296), P('Tullinløkka', 142, 314), P('Nationaltheatret', 172, 330), P('Øvre Slottsgate', 200, 344), P('Prinsens gate', 224, 356), P('Jernbanetorget', 250, 368), P('Oslo Hospital', 268, 408), P('Ekebergparken', 280, 450), P('Sjømannsskolen', 292, 500), P('Holtet', 306, 560), P('Ljabru', 318, 630)], veh: [[0.5, 1], [2.2, 1], [6.4, 1], [10.8, 1], [1.6, -1], [5.2, -1], [8.7, -1], [12.2, -1]] },
+  'F2': { mode: 'rail', code: 'F2', ends: ['Oslo S', 'Oslo lufthavn'], pts: [P('Oslo S', 276, 356), G(318, 310), G(342, 265), P('Oslo lufthavn', 352, 222)], veh: [[0.4, 1], [2.3, -1], [1.2, -1]] },
+  'R10': { mode: 'rail', code: 'R10', ends: ['Drammen', 'Lillehammer'], pts: [P('Oslo S', 276, 356), P('Lillestrøm', 332, 300), P('Oslo lufthavn', 352, 222)], veh: [[0.6, 1], [1.4, -1]] },
+  '2': { mode: 'metro', code: '2', ends: ['Østerås', 'Ellingsrudåsen'], pts: [P('Majorstuen', 36, 212), G(110, 290), P('Nationaltheatret', 176, 340), P('Stortinget', 214, 352), P('Jernbanetorget', 250, 374), P('Grønland', 290, 382)], veh: [[0.7, 1], [3.5, 1], [1.2, -1], [4.6, -1]] },
+  'FB2': { mode: 'coach', code: 'FB2', ends: ['Oslo sentrum', 'Oslo lufthavn'], pts: [P('Radisson Blu Scandinavia', 132, 292), G(165, 262), G(245, 240), G(315, 222), P('Oslo lufthavn', 352, 222)], veh: [[1.5, 1], [3.2, 1], [2.6, -1]] }
+};
+const ME = P('Pilestredet 35', 118, 318), OSL = P('Oslo lufthavn', 352, 222), BGO = P('Bergen lufthavn', 18, 226);
+const FLIGHTS = {
+  SK263: { airline: 'SAS', no: 'SK 263', aircraft: 'Boeing 737-800', status: 'I rute', gate: 'D7', gateOpen: '08:55', bagDrop: '08:50', seats: 14, belt: '3', beltTime: 'ca. 10:40' },
+  DY612: { airline: 'Norwegian', no: 'DY 612', aircraft: 'Boeing 737 MAX 8', status: 'I rute', gate: 'C4', gateOpen: '09:05', bagDrop: '09:00', seats: 6, belt: '5', beltTime: 'ca. 10:50' }
+};
+const TRIPS = [
+  { id: 't3', dep: '07:38', arr: '10:25', duration: '2 t 47 min', soon: 'om 3 min', legs: [
+    { mode: 'foot', m: 400, min: 6, start: '07:38', end: '07:44', pts: [ME, P('Radisson Blu Scandinavia', 132, 292)] },
+    { mode: 'coach', code: 'FB2', route: 'FB2', fi: 0, ti: 4, start: '07:46', end: '08:35', dir: 'Oslo lufthavn', plat: 'Plattform A', crowd: 1, lab: ['r', 'bl'] },
+    { mode: 'air', code: 'SK 263', flight: 'SK263', start: '09:30', end: '10:25', pts: [OSL, BGO], to: 'Bergen lufthavn, Flesland', lab: ['tl', 'tr'] }] },
+  { id: 't1', dep: '07:41', arr: '10:25', duration: '2 t 44 min', soon: 'om 6 min', legs: [
+    { mode: 'foot', m: 350, min: 5, start: '07:41', end: '07:46', pts: [ME, P('Holbergs plass', 112, 296)] },
+    { mode: 'tram', code: '19', route: '19', fi: 3, ti: 8, start: '07:46', end: '07:55', dir: 'Ljabru', plat: 'Plattform B', crowd: 3, control: { at: 'Tullinløkka', ago: 12 }, lab: ['tr', 'br'] },
+    { mode: 'foot', m: 250, min: 4, start: '07:55', end: '07:59', pts: [P('Jernbanetorget', 250, 368), P('Oslo S', 276, 356)] },
+    { mode: 'rail', code: 'F2', route: 'F2', fi: 0, ti: 3, start: '08:10', end: '08:29', dir: 'Oslo lufthavn', plat: 'Spor 13', crowd: 1, lab: ['tr', 'bl'] },
+    { mode: 'air', code: 'SK 263', flight: 'SK263', start: '09:30', end: '10:25', pts: [OSL, BGO], to: 'Bergen lufthavn, Flesland', lab: ['tl', 'tr'] }] },
+  { id: 't2', dep: '07:44', arr: '10:35', duration: '2 t 51 min', soon: 'om 9 min', legs: [
+    { mode: 'foot', m: 550, min: 7, start: '07:44', end: '07:51', pts: [ME, P('Nationaltheatret', 176, 340)] },
+    { mode: 'metro', code: '2', route: '2', fi: 2, ti: 4, start: '07:52', end: '07:55', dir: 'Ellingsrudåsen', plat: 'Plattform 1', crowd: 2, lab: ['bl', 'br'] },
+    { mode: 'foot', m: 150, min: 3, start: '07:55', end: '07:58', pts: [P('Jernbanetorget', 250, 374), P('Oslo S', 276, 356)] },
+    { mode: 'rail', code: 'R10', route: 'R10', fi: 0, ti: 2, start: '08:09', end: '08:32', dir: 'Lillehammer', plat: 'Spor 4', crowd: 2, lab: ['tr', 'bl'] },
+    { mode: 'air', code: 'DY 612', flight: 'DY612', start: '09:40', end: '10:35', pts: [OSL, BGO], to: 'Bergen lufthavn, Flesland', lab: ['tl', 'tr'] }] }
+];
+const WALKS = [{ id: '200', label: '200 m' }, { id: '400', label: '400 m' }, { id: '800', label: '800 m' }, { id: '1500', label: '1,5 km' }];
+const EXCL = [
+  { code: '19', mode: 'tram', name: 'Trikk 19', desc: 'Majorstuen – Ljabru' },
+  { code: '2', mode: 'metro', name: 'T-bane 2', desc: 'Østerås – Ellingsrudåsen' },
+  { code: 'F2', mode: 'rail', name: 'Flytoget F2', desc: 'Oslo S – Oslo lufthavn' },
+  { code: 'R10', mode: 'rail', name: 'Vy R10', desc: 'Drammen – Lillehammer' },
+  { code: 'FB2', mode: 'coach', name: 'Flybussen FB2', desc: 'Oslo sentrum – Oslo lufthavn' }
+];
+const FB_CATS = ['Forslag', 'Feil i rutedata', 'Noe virket ikke', 'Annet'];
+const KEY = 'reisetavla-proto-v1';
+
+const legPts = l => l.route ? ROUTES[l.route].pts.slice(l.fi, l.ti + 1) : l.pts;
+const named = pts => pts.map((p, i) => p.n ? i : -1).filter(i => i >= 0);
+const ptsStr = pts => pts.map(p => p.x + ',' + p.y).join(' ');
+const walkMax = t => Math.max(...t.legs.filter(l => l.mode === 'foot').map(l => l.m));
+const walkLeg = t => t.legs.filter(l => l.mode === 'foot').sort((a, b) => b.m - a.m)[0];
+function steps(t) {
+  const out = [];
+  t.legs.forEach((l, li) => { if (l.mode === 'air') return; named(legPts(l)).forEach((i, k) => { if (li > 0 && k === 0) return; out.push({ li, i }); }); });
+  return out;
+}
+function lvl(n) { return { c1: n === 1, c2: n === 2, c3: n === 3 }; }
+function bars(level, color) { return [1, 2, 3].map(n => ({ h: 4 + n * 3, bg: n <= level ? color : 'var(--line)' })); }
+function fmtM(m) { return m >= 1000 ? (m / 1000).toString().replace('.', ',') + ' km' : m + ' m'; }
+function load() { try { return JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { return {}; } }
+
+class Component extends DCLogic {
+  saved = load();
+  state = {
+    screen: 'results', openTrip: this.saved.openTrip === undefined ? 't1' : this.saved.openTrip, mapTrip: this.saved.mapTrip || 't1',
+    maxWalk: this.saved.maxWalk || 800, excluded: this.saved.excluded || [], alertOn: this.saved.alertOn ?? true, step: this.saved.step || 0,
+    sheet: null, mapRoute: null, sheetOpen: true, tick: 0, fbCat: 'Forslag', fbText: '', fbAttach: true, toast: null
+  };
+  scrollRef = React.createRef();
+  savedScroll = 0;
+  vp = Object.fromEntries(Object.entries(ROUTES).map(([k, r]) => [k, r.veh.map(v => v.slice())]));
+
+  componentDidMount() {
+    if (this.props.startOnMap) this.setState({ screen: 'map' });
+    this.iv = setInterval(() => {
+      const code = this.state.mapRoute;
+      if (this.state.screen !== 'map' || !code) return;
+      const max = ROUTES[code].pts.length - 1;
+      this.vp[code] = this.vp[code].map(([p, d]) => { p += d * 0.05; if (p > max) { p = max; d = -1; } if (p < 0) { p = 0; d = 1; } return [p, d]; });
+      this.setState(s => ({ tick: s.tick + 1 }));
+    }, 1000);
+  }
+  componentWillUnmount() { clearInterval(this.iv); clearTimeout(this.tt); }
+  componentDidUpdate() {
+    const s = this.state;
+    const ps = this.prevSnap || { screen: s.screen, toast: null };
+    this.prevSnap = { screen: s.screen, toast: s.toast };
+    try { localStorage.setItem(KEY, JSON.stringify({ openTrip: s.openTrip, mapTrip: s.mapTrip, maxWalk: s.maxWalk, excluded: s.excluded, alertOn: s.alertOn, step: s.step })); } catch (e) {}
+    if (ps.screen === 'map' && s.screen === 'results') {
+      const restore = () => { if (this.scrollRef.current) this.scrollRef.current.scrollTop = this.savedScroll; };
+      restore(); requestAnimationFrame(restore);
+    }
+    if (s.toast && s.toast !== ps.toast) { clearTimeout(this.tt); this.tt = setTimeout(() => this.setState({ toast: null }), 1800); }
+  }
+
+  filtered() {
+    const { excluded, maxWalk } = this.state;
+    const cand = TRIPS.filter(t => !t.legs.some(l => l.route && excluded.includes(l.code)));
+    const within = cand.filter(t => walkMax(t) <= maxWalk);
+    const hidden = TRIPS.length - cand.length;
+    if (within.length || !cand.length) return { list: within, outside: false, hidden, cand };
+    const best = cand.slice().sort((a, b) => walkMax(a) - walkMax(b))[0];
+    return { list: [best], outside: true, best, hidden, cand };
+  }
+
+  tripVM(t, outside) {
+    const showControl = this.props.showTicketControl ?? true;
+    const expanded = this.state.openTrip === t.id;
+    const chips = [];
+    t.legs.forEach((l, i) => { if (i) chips.push({ sep: true }); if (l.mode === 'foot') chips.push({ isFoot: true, minutes: l.min }); else chips.push({ isLine: true, mode: l.mode, code: l.code }); });
+    const transit = t.legs.filter(l => l.mode !== 'foot');
+    const n = transit.length - 1;
+    const ctrlLeg = showControl ? t.legs.find(l => l.control) : null;
+    const control = ctrlLeg ? `Billettkontroll meldt ved ${ctrlLeg.control.at} på ${MODE[ctrlLeg.mode].toLowerCase()} ${ctrlLeg.code} for ${ctrlLeg.control.ago} min siden` : '';
+    const wl = walkLeg(t);
+    const walkNote = outside ? `${wl.m} m gange til ${wl.pts[1].n} er over maks gange (${fmtM(this.state.maxWalk)}).` : '';
+    const crowd = transit.map(l => {
+      if (l.mode === 'air') { const f = FLIGHTS[l.flight]; return { code: l.code, c1: false, c2: false, c3: false, label: f.seats < 10 ? `bare ${f.seats} ledige seter` : `${f.seats} ledige seter` }; }
+      const c = CROWD[l.crowd]; return Object.assign({ code: l.code, label: c.label }, lvl(l.crowd));
+    });
+    const legs = t.legs.map(l => {
+      const pts = legPts(l); const mflags = Object.fromEntries(['foot','tram','metro','rail','coach','air'].map(m => ['is_' + m, l.mode === m]));
+      if (l.mode === 'foot') return { ...mflags, isFoot: true, isTransit: false, start: l.start, end: l.end, bar: 'repeating-linear-gradient(180deg,var(--m-foot) 0 4px,transparent 4px 8px)', title: `Gå ${l.m} m · ${l.min} min`, sub: `Til ${pts[pts.length - 1].n}` };
+      const base = { ...mflags, isFoot: false, isTransit: true, mode: l.mode, code: l.code, start: l.start, end: l.end, bar: mc(l.mode), hasControl: !!(showControl && l.control), control: l.control ? `Billettkontroll meldt ved ${l.control.at} for ${l.control.ago} min siden` : '' };
+      if (l.mode === 'air') {
+        const f = FLIGHTS[l.flight];
+        return Object.assign(base, { isAir: true, dir: `${f.airline} · ${f.status}`, from: `Fra Oslo lufthavn · Gate ${f.gate}`, to: `Til ${l.to}`, c1: false, c2: false, c3: false, crowdLabel: f.seats < 10 ? `Bare ${f.seats} ledige seter` : `${f.seats} ledige seter`,
+          flightRows: [{ k: 'Flightnummer', v: `${f.no} · ${f.airline}` }, { k: 'Status', v: f.status }, { k: 'Ledige seter', v: String(f.seats) }, { k: 'Gate', v: `${f.gate} · åpner ${f.gateOpen}` }, { k: 'Bagasjeslipp stenger', v: f.bagDrop }, { k: 'Bagasjebånd i Bergen', v: `Bånd ${f.belt} · ${f.beltTime}` }, { k: 'Fly', v: f.aircraft }] });
+      }
+      const between = named(pts).length - 2;
+      const c = CROWD[l.crowd];
+      return Object.assign(base, { isAir: false, flightRows: [], dir: `mot ${l.dir}`, from: `Fra ${pts[0].n} · ${l.plat}`, to: `Til ${pts[pts.length - 1].n} · ${between > 0 ? between + ' stopp underveis' : 'uten stopp'}`, c1: l.crowd === 1, c2: l.crowd === 2, c3: l.crowd === 3, crowdLabel: c.label + ' om bord' });
+    });
+    return {
+      id: t.id, dep: t.dep, arr: t.arr, duration: t.duration, soon: t.soon, expanded,
+      transfers: n === 0 ? 'Direkte' : n === 1 ? '1 bytte' : n + ' bytter', platform: transit[0].plat || '',
+      chips, barEl: h('span', { style: { display: 'flex', gap: 3, height: 8 } }, t.legs.map((l, i) => h('span', { key: i, style: { flex: Math.max(2, toMin(l.end) - toMin(l.start)), borderRadius: 4, background: l.mode === 'foot' ? 'repeating-linear-gradient(90deg,var(--m-foot) 0 4px,transparent 4px 7px)' : mc(l.mode) } }))),
+      crowd, control, hasControl: !!control, walkNote, hasWalkNote: !!walkNote, hasNotes: !!control || !!walkNote, legs,
+      toggle: () => this.setState(s => ({ openTrip: s.openTrip === t.id ? null : t.id })),
+      openMap: () => { this.savedScroll = this.scrollRef.current ? this.scrollRef.current.scrollTop : 0; this.setState(s => ({ screen: 'map', mapTrip: t.id, openTrip: t.id, step: s.mapTrip === t.id ? s.step : 0, mapRoute: null, sheetOpen: true })); }
+    };
+  }
+
+  mapVM() {
+    const showControl = this.props.showTicketControl ?? true;
+    const t = TRIPS.find(x => x.id === this.state.mapTrip) || TRIPS[1];
+    const st = steps(t);
+    const si = Math.min(this.state.step, st.length - 1);
+    const s = st[si], ns = st[si + 1];
+    const segs = [], dots = [], labels = [], controls = [];
+    const route = this.state.mapRoute ? ROUTES[this.state.mapRoute] : null;
+    if (route) { segs.push({ pts: ptsStr(route.pts), color: mc(route.mode), w: 12, op: 0.2 }); route.pts.forEach(p => p.n && dots.push({ x: p.x, y: p.y, r: 3, c: mc(route.mode), sw: 2, op: 0.7 })); }
+    t.legs.forEach((l, li) => {
+      const pts = legPts(l), last = pts.length - 1;
+      const col = l.mode === 'foot' ? 'var(--muted)' : mc(l.mode);
+      const w = l.mode === 'foot' ? 4 : l.mode === 'air' ? 3 : 6;
+      const dash = l.mode === 'foot' ? '1 8' : l.mode === 'air' ? '8 8' : null;
+      const F = 0.28;
+      if (li < s.li) segs.push({ pts: ptsStr(pts), color: col, w, op: F, dash });
+      else if (li > s.li) segs.push({ pts: ptsStr(pts), color: col, w, op: 1, dash });
+      else { const a = pts.slice(0, s.i + 1), b = pts.slice(s.i); if (a.length > 1) segs.push({ pts: ptsStr(a), color: col, w, op: F, dash }); if (b.length > 1) segs.push({ pts: ptsStr(b), color: col, w, op: 1, dash }); }
+      if (l.mode === 'foot') return;
+      const passedAt = k => li < s.li || (li === s.li && k <= s.i);
+      named(pts).forEach(k => { const big = k === 0 || k === last; dots.push({ x: pts[k].x, y: pts[k].y, r: big ? 6 : 3.5, c: mc(l.mode), sw: big ? 3 : 2, op: passedAt(k) && !(k === s.i && li === s.li) ? 0.4 : 1 }); });
+      const legDone = li < s.li || (li === s.li && s.i === last);
+      const f = l.flight ? FLIGHTS[l.flight] : null;
+      labels.push({ x: pts[0].x, y: pts[0].y, side: l.lab[0], c: mc(l.mode), op: legDone ? 0.55 : 1, kind: 'På · ' + MODE[l.mode] + ' ' + l.code, name: pts[0].n, meta: l.start + ' · ' + (f ? 'Gate ' + f.gate : l.plat) });
+      labels.push({ x: pts[last].x, y: pts[last].y, side: l.lab[1], c: mc(l.mode), op: legDone ? 0.55 : 1, kind: 'Av · ' + MODE[l.mode] + ' ' + l.code, name: pts[last].n, meta: l.end + (f ? ' · bånd ' + f.belt : '') });
+      if (showControl && l.control) { const cp = pts.find(p => p.n === l.control.at); if (cp) controls.push({ x: cp.x, y: cp.y }); }
+    });
+    const curLeg = t.legs[s.li], curPts = legPts(curLeg), cur = curPts[s.i];
+    let alertTitle = '', alertText = '';
+    if (this.state.alertOn) {
+      if (curLeg.mode !== 'foot' && s.i === curPts.length - 1) { alertTitle = 'Gå av nå'; alertText = `${cur.n} · ${MODE[curLeg.mode]} ${curLeg.code}`; }
+      else if (ns) { const nl = t.legs[ns.li], np = legPts(nl); if (nl.mode !== 'foot' && ns.i === np.length - 1) { alertTitle = 'Gå av ved neste stopp'; alertText = `${np[ns.i].n} · ankomst ${nl.end}`; } }
+    }
+    const onBoard = curLeg.mode !== 'foot' && s.i < curPts.length - 1;
+    let status = onBoard ? `Om bord på ${MODE[curLeg.mode].toLowerCase()} ${curLeg.code} · ved ${cur.n}` : `Du er ved ${cur.n}`;
+    if (ns) status += ` · neste: ${legPts(t.legs[ns.li])[ns.i].n}`;
+    else { const air = t.legs.find(l => l.flight); if (air) status += ` · gate ${FLIGHTS[air.flight].gate} åpner ${FLIGHTS[air.flight].gateOpen}`; }
+
+    let vehicles = [], groups = [], routeTitle = '';
+    if (route) {
+      const leg = t.legs.find(l => l.route === this.state.mapRoute);
+      const my = leg.fi, myName = route.pts[my].n;
+      const nm = named(route.pts);
+      routeTitle = `${MODE[route.mode]} ${route.code} i trafikk nå`;
+      const list = this.vp[this.state.mapRoute].map(([p, d]) => {
+        const i = Math.min(Math.floor(p), route.pts.length - 2), f = p - i, A = route.pts[i], B = route.pts[i + 1];
+        const toward = (d > 0 && p < my) || (d < 0 && p > my);
+        const near = route.pts[nm.slice().sort((a, b) => Math.abs(a - p) - Math.abs(b - p))[0]].n;
+        const min = Math.max(1, Math.round(Math.abs(my - p) * 1.6));
+        return { x: A.x + (B.x - A.x) * f, y: A.y + (B.y - A.y) * f, code: route.code, bg: mc(route.mode), op: toward ? 1 : 0.5, ring: toward ? '0 0 0 3px var(--surface),0 0 0 5px var(--accent)' : '0 0 0 3px var(--surface)', d, toward, dist: Math.abs(my - p), where: `Ved ${near}`, status: toward ? `om ${min} min til ${myName}` : `har passert ${myName}`, away: !toward };
+      });
+      vehicles = list;
+      groups = [1, -1].map(d => ({ title: 'Mot ' + route.ends[d > 0 ? 1 : 0], note: d > 0 ? 'Din retning' : 'Motsatt spor', rows: list.filter(v => v.d === d).sort((a, b) => (b.toward - a.toward) || (a.dist - b.dist)) }));
+    }
+    const ctrlLeg = showControl ? t.legs.find(l => l.control) : null;
+    const svg = h('svg', { width: 390, height: 844, style: { position: 'absolute', inset: 0 } },
+      segs.map((g, i) => h('polyline', { key: 's' + i, points: g.pts, fill: 'none', stroke: g.color, strokeWidth: g.w, strokeOpacity: g.op, strokeDasharray: g.dash || undefined, strokeLinecap: 'round', strokeLinejoin: 'round' })),
+      dots.map((d, i) => h('circle', { key: 'd' + i, cx: d.x, cy: d.y, r: d.r, fill: 'var(--surface)', stroke: d.c, strokeWidth: d.sw, opacity: d.op })));
+    const BOUND = { l: 6, r: 384, t: 152, b: 458 };
+    const boxAt = (side, x, y, w, hh) => ({ tl: [x - 8 - w, y - 8 - hh], tr: [x + 8, y - 8 - hh], bl: [x - 8 - w, y + 8], br: [x + 8, y + 8], l: [x - 12 - w, y - hh / 2], r: [x + 12, y - hh / 2], t: [x - w / 2, y - 12 - hh], b: [x - w / 2, y + 12] })[side];
+    const placed = [];
+    const hit = (a, b) => a.x < b.x + b.w + 4 && b.x < a.x + a.w + 4 && a.y < b.y + b.h + 4 && b.y < a.y + a.h + 4;
+    const fits = bx => bx.x >= BOUND.l && bx.x + bx.w <= BOUND.r && bx.y >= BOUND.t && bx.y + bx.h <= BOUND.b && !placed.some(p => hit(p, bx));
+    const ovA = (a, b) => Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+    const obstacles = [];
+    const sample = pts => { for (let k = 0; k < pts.length - 1; k++) { const A = pts[k], B = pts[k + 1], n = Math.max(1, Math.ceil(Math.hypot(B.x - A.x, B.y - A.y) / 10)); for (let j = 0; j <= n; j++) obstacles.push({ x: A.x + (B.x - A.x) * j / n - 5, y: A.y + (B.y - A.y) * j / n - 5, w: 10, h: 10, wt: 1 }); } };
+    t.legs.forEach(l => { if (l.mode !== 'air') sample(legPts(l)); });
+    obstacles.push({ x: cur.x - 16, y: cur.y - 16, w: 32, h: 32, wt: 50 });
+    const place = (pref, x, y, w, hh) => {
+      const order = [pref, 'tr', 'br', 'tl', 'bl', 'r', 'l', 't', 'b'].filter((s2, i, a) => a.indexOf(s2) === i);
+      let best = null, bestScore = Infinity;
+      order.forEach((sd, idx) => { const [bx, by] = boxAt(sd, x, y, w, hh); const bb = { x: bx, y: by, w, h: hh };
+        const oob = Math.max(0, BOUND.l - bx) + Math.max(0, bx + w - BOUND.r) + Math.max(0, BOUND.t - by) + Math.max(0, by + hh - BOUND.b);
+        const score = oob * 1e5 + placed.reduce((s3, p) => s3 + ovA(p, bb) * 100, 0) + obstacles.reduce((s3, o) => s3 + ovA(o, bb) * o.wt, 0) + idx;
+        if (score < bestScore) { bestScore = score; best = bb; } });
+      placed.push(best); return best; };
+    for (let i = labels.length - 1; i > 0; i--) { const a = labels[i - 1], b = labels[i]; if (a.kind.startsWith('Av') && b.kind.startsWith('På') && a.name === b.name) { a.kind = 'Bytte · ' + b.kind.replace('På · ', ''); a.meta = a.meta.split(' · ')[0] + ' → ' + b.meta.split(' · ')[0]; a.c = b.c; labels.splice(i, 1); } }
+    labels.forEach(l => { const w = Math.ceil(Math.max(l.kind.length * 7.4 + 13, l.name.length * 7.7, l.meta.length * 6.6)) + 20; const b = place(l.side, l.x, l.y, w, 54); l.bx = b.x; l.by = b.y; l.w = w; });
+    controls.forEach(c => { const b = place('t', c.x, c.y, 28, 28); c.bx = b.x; c.by = b.y; });
+    const lab = { position: 'absolute', background: 'var(--surface)', borderRadius: 10, boxShadow: 'var(--shadow)', padding: '5px 9px 6px', pointerEvents: 'none' };
+    const overlay = h(React.Fragment, null,
+      controls.map((c, i) => h('div', { key: 'c' + i, style: { position: 'absolute', left: c.bx, top: c.by, width: 28, height: 28, boxSizing: 'border-box', display: 'grid', placeItems: 'center', background: 'color-mix(in srgb,var(--warn) 14%,var(--surface))', color: 'var(--warn)', borderRadius: 999, boxShadow: 'var(--shadow)' }, 'aria-label': 'Billettkontroll meldt', title: 'Billettkontroll meldt' }, h(window.Reisetavla.Icon, { name: 'warn' }))),
+      labels.map((l, i) => h('div', { key: 'l' + i, style: Object.assign({}, lab, { left: l.bx, top: l.by, width: l.w, height: 54, boxSizing: 'border-box', whiteSpace: 'nowrap', overflow: 'hidden', opacity: l.op }) },
+        h('div', { style: { display: 'flex', alignItems: 'center', gap: 5, fontSize: 10.5, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted)', whiteSpace: 'nowrap' } }, h('i', { style: { width: 8, height: 8, borderRadius: '50%', flex: 'none', background: l.c } }), l.kind),
+        h('div', { style: { fontWeight: 700, fontSize: 13.5, lineHeight: 1.2 } }, l.name),
+        h('div', { style: { fontSize: 12, color: 'var(--muted)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' } }, l.meta))),
+      vehicles.map((v, i) => h('div', { key: 'v' + i, style: { position: 'absolute', left: v.x, top: v.y, transform: 'translate(-50%,-50%)', width: 28, height: 28, borderRadius: '50%', background: v.bg, color: 'var(--on-mode)', display: 'grid', placeItems: 'center', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 11, opacity: v.op, boxShadow: v.ring, transition: 'left 1s linear, top 1s linear' } }, v.code)),
+      h('div', { 'aria-label': 'Din posisjon', style: { position: 'absolute', left: cur.x, top: cur.y, transform: 'translate(-50%,-50%)', width: 20, height: 20, borderRadius: '50%', background: 'var(--accent)', boxShadow: '0 0 0 4px var(--surface),0 0 0 10px color-mix(in srgb,var(--accent) 22%,transparent)', transition: 'left .4s, top .4s' } }));
+    return {
+      svg, overlay, trip: t, title: 'Pilestredet 35 → Bergen', labels, controls, vehicles, groups, routeTitle, hasRoute: !!route, me: { x: cur.x, y: cur.y },
+      hasAlert: !!alertTitle, alertTitle, alertText, status,
+      hasControl: !!ctrlLeg, control: ctrlLeg ? `Billettkontroll meldt ved ${ctrlLeg.control.at} på ${MODE[ctrlLeg.mode].toLowerCase()} ${ctrlLeg.code} for ${ctrlLeg.control.ago} min siden` : '',
+      chips: t.legs.filter(l => l.route).map(l => { const on = this.state.mapRoute === l.route; return { code: l.code, mode: l.mode, label: on ? 'Vises' : ALL[l.mode], pressed: on, unpressed: !on, ring: on ? '0 0 0 2px var(--accent)' : 'var(--shadow)', onClick: () => this.setState(s2 => ({ mapRoute: s2.mapRoute === l.route ? null : l.route, sheetOpen: true })) }; }),
+      legs: t.legs.map((l, li) => { const pts = legPts(l), done = li < s.li || (li === s.li && s.i === pts.length - 1 && l.mode !== 'air'); return { isFoot: l.mode === 'foot', isLine: l.mode !== 'foot', minutes: l.min, mode: l.mode, code: l.code, done, ahead: !done, line: l.mode === 'foot' ? `Gå ${l.m} m til ${pts[pts.length - 1].n}` : `${pts[0].n} → ${l.to || pts[pts.length - 1].n}`, meta: `${l.start}–${l.end}` + (l.crowd ? ' · ' + CROWD[l.crowd].label : '') + (l.flight ? ' · ' + FLIGHTS[l.flight].seats + ' ledige seter' : '') + (done ? ' · tilbakelagt' : '') }; })
+    };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const fr = this.filtered();
+    const trips = fr.list.map(t => this.tripVM(t, fr.outside));
+    const isMap = s.screen === 'map';
+    const map = isMap ? this.mapVM() : null;
+    const exclNames = EXCL.filter(e => s.excluded.includes(e.code)).map(e => e.code);
+    let outsideText = '', raiseLabel = '', raiseTo = null;
+    if (fr.outside) {
+      const wl = walkLeg(fr.best), need = walkMax(fr.best);
+      outsideText = `Ingen stopp innenfor ${fmtM(s.maxWalk)} gange. Nærmeste alternativ er ${wl.pts[1].n}, ${wl.m} m unna. Vi viser det beste forslaget utenfor maks gange.`;
+      const opt = WALKS.find(w => Number(w.id) >= need); raiseTo = opt ? Number(opt.id) : null; raiseLabel = opt ? `Øk til ${opt.label}` : '';
+    }
+    const sw = on => ({ track: on ? 'var(--accent)' : 'var(--muted)', knob: on ? 23 : 3 });
+    return {
+      theme: this.props.theme === 'light' || this.props.theme === 'dark' ? this.props.theme : undefined,
+      searchProps: { from: 'Pilestredet 35', to: 'Bergen lufthavn, Flesland' }, isResults: !isMap, isMap, scrollRef: this.scrollRef, trips,
+      filterSummary: `Maks gange ${fmtM(s.maxWalk)} · ${exclNames.length ? 'Uten ' + exclNames.join(', ') : 'Alle ruter'}`,
+      outside: fr.outside, outsideText, raiseLabel, raiseWalk: () => raiseTo && this.setState({ maxWalk: raiseTo }),
+      resultSubtitle: `avreise nå · ${trips.length === 1 ? '1 forslag' : trips.length + ' forslag'}`,
+      hasHidden: fr.hidden > 0 && trips.length > 0, hiddenText: `${fr.hidden} ${fr.hidden === 1 ? 'forslag' : 'forslag'} skjult fordi ${exclNames.join(', ')} er ekskludert.`,
+      isEmpty: trips.length === 0,
+      openFilter: () => this.setState({ sheet: 'filter' }), openFeedback: () => this.setState({ sheet: 'feedback' }), closeSheet: () => this.setState({ sheet: null }),
+      isFilter: s.sheet === 'filter', isFeedback: s.sheet === 'feedback',
+      walkOpts: WALKS, maxWalkId: String(s.maxWalk), setMaxWalk: id => this.setState({ maxWalk: Number(id) }),
+      routeRows: EXCL.map(e => { const ex = s.excluded.includes(e.code), w = sw(ex); return Object.assign({}, e, { excluded: ex, included: !ex, stateText: ex ? 'Ekskludert' : 'Med', aria: 'Ekskluder ' + e.name, track: w.track, knob: w.knob, toggle: () => this.setState(st => ({ excluded: st.excluded.includes(e.code) ? st.excluded.filter(c => c !== e.code) : st.excluded.concat(e.code) })) }); }),
+      applyLabel: trips.length ? `Vis ${trips.length} ${trips.length === 1 ? 'reise' : 'reiser'}` : 'Lukk',
+      fbCats: FB_CATS.map(c => ({ label: c, pressed: s.fbCat === c, unpressed: s.fbCat !== c, bg: s.fbCat === c ? 'var(--ink)' : 'var(--surface-2)', fg: s.fbCat === c ? 'var(--bg)' : 'var(--ink)', onClick: () => this.setState({ fbCat: c }) })),
+      fbText: s.fbText, onFbText: e => this.setState({ fbText: e.target.value }),
+      fbAttach: s.fbAttach, fbNoAttach: !s.fbAttach, attachTrack: sw(s.fbAttach).track, attachKnob: sw(s.fbAttach).knob, toggleAttach: () => this.setState(st => ({ fbAttach: !st.fbAttach })),
+      sendFeedback: () => this.setState({ sheet: null, fbText: '', toast: 'Tilbakemeldingen er sendt' }),
+      hasToast: !!s.toast, toast: s.toast,
+      map: map || { labels: [], controls: [], vehicles: [], chips: [], legs: [], groups: [], me: { x: 0, y: 0 }, trip: {} }, mapSvg: map ? map.svg : null, mapOverlay: map ? map.overlay : null,
+      goBack: () => this.setState({ screen: 'results' }),
+      sheetOpen: s.sheetOpen, sheetClosed: !s.sheetOpen, sheetToggleLabel: s.sheetOpen ? 'Skjul detaljer' : 'Vis detaljer', toggleSheet: () => this.setState(st => ({ sheetOpen: !st.sheetOpen })),
+      alertOn: s.alertOn, alertTrack: sw(s.alertOn).track, alertKnob: sw(s.alertOn).knob, toggleAlert: () => this.setState(st => ({ alertOn: !st.alertOn })),
+      nextStep: () => this.setState(st => ({ step: Math.min(st.step + 1, steps(TRIPS.find(x => x.id === st.mapTrip) || TRIPS[1]).length - 1) })),
+      resetStep: () => this.setState({ step: 0 })
+    };
+  }
+}
+</script>
+</body>
+</html>

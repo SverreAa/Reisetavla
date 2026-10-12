@@ -1,0 +1,19 @@
+{
+  "name": "reisetavla-app",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Reisetavla — reiseplanlegger for mobil, bygget på reisetavla-ds.",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "watch": "node build.mjs --watch"
+  },
+  "dependencies": {
+    "leaflet": "1.9.4",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "esbuild": "0.24.0"
+  }
+}

@@ -39,8 +39,8 @@ const imports = comp.match(/^@import[^\n]*\n/gm) || [];
 const rest = comp.replace(/^@import[^\n]*\n/gm, '');
 const css = `${imports.join('')}/* Reisetavla tokens — generert fra tokens.json */
 :root{${light.join(';')};${root.join(';')}}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){${dark.join(';')};color-scheme:dark}}
-:root[data-theme="dark"],[data-theme="dark"]{${dark.join(';')};color-scheme:dark}
+/* Mørkt tema: Root setter alltid data-theme (systemvalg leses i JS), så ingen media query trengs. */
+[data-theme="dark"]{${dark.join(';')};color-scheme:dark}
 [data-theme="light"]{${light.join(';')};color-scheme:light}
 ${rest}`;
 writeFileSync(join(dist, 'styles.css'), css);

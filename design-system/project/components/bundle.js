@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"Reisetavla","components":[{"name":"Root"},{"name":"AppHeader"},{"name":"StatusBadge"},{"name":"Note"},{"name":"Button"},{"name":"IconButton"},{"name":"Icon"},{"name":"SavedChip"},{"name":"SearchCard"},{"name":"SegmentedControl"},{"name":"ModeChip"},{"name":"SuggestionList"},{"name":"LinePill"},{"name":"WalkChip"},{"name":"TripCard"},{"name":"DepartureRow"},{"name":"WarningLine"},{"name":"EmptyState"},{"name":"Skeleton"},{"name":"BottomSheet"},{"name":"Toast"},{"name":"TabBar"},{"name":"ResultHeader"}]} */
+/* @ds-bundle: {"format":4,"namespace":"Reisetavla","components":[{"name":"Root"},{"name":"Switch"},{"name":"CrowdMeter"},{"name":"AppHeader"},{"name":"StatusBadge"},{"name":"Note"},{"name":"Button"},{"name":"IconButton"},{"name":"Icon"},{"name":"SavedChip"},{"name":"SearchCard"},{"name":"SegmentedControl"},{"name":"ModeChip"},{"name":"SuggestionList"},{"name":"LinePill"},{"name":"WalkChip"},{"name":"TripCard"},{"name":"DepartureRow"},{"name":"WarningLine"},{"name":"EmptyState"},{"name":"Skeleton"},{"name":"BottomSheet"},{"name":"Toast"},{"name":"TabBar"},{"name":"ResultHeader"}]} */
 (function () {
   var React = window.React;
   var h = React.createElement;
@@ -30,8 +30,22 @@
     return h('svg', { className: cx('rt-i', p.className), viewBox: '0 0 20 20', 'aria-hidden': 'true', dangerouslySetInnerHTML: { __html: ICON[p.name] || ICON.bus } });
   }
 
+  function systemTheme() {
+    return typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+
   function Root(p) {
-    return h('div', { className: cx('rt-root', p.screen && 'rt-screen', p.className), 'data-theme': p.theme }, p.children);
+    var st = React.useState(systemTheme), sys = st[0], setSys = st[1];
+    React.useEffect(function () {
+      if (p.theme || !window.matchMedia) return;
+      var mq = window.matchMedia('(prefers-color-scheme: dark)');
+      var on = function () { setSys(mq.matches ? 'dark' : 'light'); };
+      on();
+      if (mq.addEventListener) { mq.addEventListener('change', on); return function () { mq.removeEventListener('change', on); }; }
+      mq.addListener(on); return function () { mq.removeListener(on); };
+    }, [p.theme]);
+    var theme = p.theme === 'light' || p.theme === 'dark' ? p.theme : sys;
+    return h('div', { className: cx('rt-root', p.screen && 'rt-screen', p.className), 'data-theme': theme, style: p.style }, p.children);
   }
 
   function StatusBadge(p) {
@@ -68,9 +82,13 @@
   }
 
   function Field(p) {
+    var inp = Object.assign({ id: p.id, placeholder: 'Valgfritt · stopp eller adresse', autoComplete: 'off', enterKeyHint: 'search' },
+      p.inputProps && 'value' in p.inputProps ? {} : { defaultValue: p.value || '' }, p.inputProps || {});
     return h('div', { className: 'rt-field' },
       h('label', { htmlFor: p.id }, p.label),
-      h('input', { id: p.id, defaultValue: p.value || '', placeholder: 'Valgfritt · stopp eller adresse', autoComplete: 'off', enterKeyHint: 'search' }));
+      h('input', inp),
+      p.onClear ? h('button', { type: 'button', className: 'rt-clear', 'aria-label': 'Tøm ' + p.label.toLowerCase(), onClick: p.onClear }, h(Icon, { name: 'close' })) : null,
+      p.extra || null);
   }
 
   function SearchCard(p) {
@@ -78,9 +96,9 @@
     return h('section', { className: 'rt-card', 'aria-label': 'Søk' },
       h('div', { className: 'rt-route' },
         h('div', { className: 'rt-dots', 'aria-hidden': 'true' }, h('span', { className: 'o' }), h('span', { className: 'l' }), h('span', { className: 'f' })),
-        h(Field, { id: idp + '-from', label: 'Fra', value: p.from }),
+        h(Field, { id: idp + '-from', label: 'Fra', value: p.from, inputProps: p.fromInputProps, onClear: p.onClearFrom, extra: p.fromExtra }),
         h(IconButton, { icon: 'swap', label: 'Bytt fra og til', inset: true, className: 'rt-swap', onClick: p.onSwap }),
-        h(Field, { id: idp + '-to', label: 'Til', value: p.to })),
+        h(Field, { id: idp + '-to', label: 'Til', value: p.to, inputProps: p.toInputProps, onClear: p.onClearTo, extra: p.toExtra })),
       p.children);
   }
 
@@ -99,10 +117,12 @@
   }
 
   function SuggestionList(p) {
-    return h('div', { className: 'rt-suggest', role: 'listbox' },
+    return h('div', { className: cx('rt-suggest', p.floating && 'is-floating'), role: 'listbox' },
       (p.items || []).map(function (it, i) {
         var ic = it.kind === 'me' ? 'me' : it.kind === 'stop' ? 'bus' : 'pin';
-        return h('button', { key: i, type: 'button', role: 'option' },
+        return h('button', { key: i, type: 'button', role: 'option',
+          onMouseDown: function (e) { e.preventDefault(); },
+          onClick: p.onSelect ? function () { p.onSelect(it, i); } : undefined },
           h('span', { className: cx('ic', it.kind === 'me' && 'me') }, h(Icon, { name: ic })),
           h('span', null, h('b', null, it.name), h('small', null, it.sub || '')));
       }));
@@ -127,27 +147,78 @@
     return h('div', { className: cx('rt-warn', p.tone === 'crit' && 'is-crit') }, h(Icon, { name: 'warn' }), h('span', null, p.children));
   }
 
+  var CROWD_LABEL = [null, 'God plass', 'Noe trangt', 'Trangt'];
+  var CROWD_TONE = [null, 'var(--ok)', 'var(--warn)', 'var(--crit)'];
+
+  function CrowdMeter(p) {
+    var lv = Math.max(1, Math.min(3, p.level || 1));
+    var label = p.label === undefined ? CROWD_LABEL[lv] : p.label;
+    return h('span', { className: 'rt-crowd-item' },
+      p.code ? h('b', { className: 'rt-crowd-code' }, p.code) : null,
+      h('span', { className: 'rt-meter', 'aria-hidden': 'true' }, [1, 2, 3].map(function (n) {
+        return h('i', { key: n, style: { background: n <= lv ? CROWD_TONE[lv] : 'var(--line)' } });
+      })),
+      label ? h('span', { className: 'rt-crowd-label' }, label) : null);
+  }
+
+  function Switch(p) {
+    var on = !!p.checked;
+    return h('button', { type: 'button', role: 'switch', className: 'rt-switch', 'aria-checked': String(on), 'aria-label': p.label,
+      disabled: p.disabled, onClick: p.onChange ? function () { p.onChange(!on); } : undefined }, h('span', { className: 'knob' }));
+  }
+
+  function seatsText(n, cap) {
+    if (n == null) return '';
+    var t = n < 10 ? 'bare ' + n + ' ledige seter' : n + ' ledige seter';
+    return cap ? t.charAt(0).toUpperCase() + t.slice(1) : t;
+  }
+
+  function flightRows(f, toName) {
+    var rows = [];
+    if (f.number) rows.push(['Flightnummer', f.number + (f.airline ? ' · ' + f.airline : '')]);
+    if (f.status) rows.push(['Status', f.status]);
+    if (f.seats != null) rows.push(['Ledige seter', String(f.seats)]);
+    if (f.gate) rows.push(['Gate', f.gate + (f.gateOpen ? ' · åpner ' + f.gateOpen : '')]);
+    if (f.bagDrop) rows.push(['Bagasjeslipp stenger', f.bagDrop]);
+    if (f.belt) rows.push(['Bagasjebånd' + (f.beltAirport ? ' i ' + f.beltAirport : ''), 'Bånd ' + f.belt + (f.beltTime ? ' · ' + f.beltTime : '')]);
+    if (f.aircraft) rows.push(['Fly', f.aircraft]);
+    return rows;
+  }
+
   function Leg(l, i) {
     if (l.mode === 'foot') {
       return h('li', { key: i, className: 'rt-leg foot' },
-        h('div', { className: 'tm' }, h('span', null, l.start), h('span')),
+        h('div', { className: 'tm' }, h('span', null, l.start), h('span', null, l.end)),
         h('div', { className: 'ln' }),
-        h('div', { className: 'tx' }, h('span', null, 'Gå ' + l.minutes + ' min' + (l.meters ? ' · ' + l.meters + ' m' : '')), h('small', null, 'Til ' + l.to)));
+        h('div', { className: 'tx' },
+          h('b', null, 'Gå ' + (l.meters ? l.meters + ' m · ' : '') + l.minutes + ' min'),
+          l.to ? h('span', { className: 'sub' }, 'Til ' + l.to) : null));
     }
+    var f = l.mode === 'air' ? (l.flight || {}) : null;
+    var plat = l.platform ? (/^(spor|plattform|gate)\b/i.test(l.platform) ? l.platform : (l.mode === 'rail' ? 'Spor ' : 'Plattform ') + l.platform) : '';
+    var dir = f ? [f.airline, f.status].filter(Boolean).join(' · ') : (l.towards ? 'mot ' + l.towards : '');
+    var from = f ? 'Fra ' + l.from + (f.gate ? ' · Gate ' + f.gate : '') : 'Fra ' + l.from + (plat ? ' · ' + plat : '');
+    var to = 'Til ' + l.to + (f || l.stops == null ? '' : ' · ' + (l.stops > 0 ? l.stops + ' stopp underveis' : 'uten stopp'));
+    var rows = f ? flightRows(f) : [];
     return h('li', { key: i, className: 'rt-leg', style: lineStyle(l) },
       h('div', { className: 'tm' }, h('span', { className: l.late ? 'rt-late' : undefined }, l.start), h('span', null, l.end)),
       h('div', { className: 'ln' }),
       h('div', { className: 'tx' },
-        h('div', null, h(LinePill, { mode: l.mode, code: l.code, colour: l.colour, textColour: l.textColour }), ' ', h('b', null, 'mot ' + l.towards)),
-        h('span', null, 'Fra ' + l.from + (l.platform ? ', ' + (l.mode === 'rail' ? 'spor ' : 'plattform ') + l.platform : '')),
-        h('span', null, 'Av på ' + l.to),
-        h('small', null, (MODE_LABEL[l.mode] || l.mode) + ' · ' + (l.operator || '') + (l.realtime ? ' · sanntid' : ' · rutetid') + (l.late ? ' · ' + l.late + ' min forsinket' : ''))));
+        h('span', { className: 'rt-leg-line' }, h(LinePill, { mode: l.mode, code: l.code, colour: l.colour, textColour: l.textColour }), dir ? h('span', { className: 'sub' }, dir) : null),
+        h('b', null, from),
+        h('span', { className: 'sub' }, to),
+        f ? (f.seats != null ? h('span', { className: 'rt-crowd-line' }, seatsText(f.seats, true)) : null)
+          : (l.crowd ? h('span', { className: 'rt-crowd-line' }, h(CrowdMeter, { level: l.crowd, label: CROWD_LABEL[l.crowd] + ' om bord' })) : null),
+        l.control ? h(WarningLine, null, l.control) : null,
+        rows.length ? h('div', { className: 'rt-flight' }, rows.map(function (r, k) { return h('div', { key: k }, h('span', null, r[0]), h('b', null, r[1])); })) : null));
   }
 
   function TripCard(p) {
-    var st = React.useState(!!p.open), open = st[0], setOpen = st[1];
+    var st = React.useState(!!p.open), own = st[0], setOwn = st[1];
+    var controlled = p.expanded !== undefined;
+    var open = controlled ? !!p.expanded : own;
+    var toggle = function () { if (p.onToggle) p.onToggle(!open); if (!controlled) setOwn(!open); };
     var legs = p.legs || [];
-    var total = legs.reduce(function (s, l) { return s + (l.duration || 1); }, 0) || 1;
     var transit = legs.filter(function (l) { return l.mode !== 'foot'; });
     var changes = Math.max(0, transit.length - 1);
     var chips = [];
@@ -157,26 +228,35 @@
     });
     var withSep = [];
     chips.forEach(function (c, i) { if (i) withSep.push(h('span', { key: 's' + i, className: 'rt-sep', 'aria-hidden': 'true' }, '›')); withSep.push(c); });
+    var crowd = transit.map(function (l, i) {
+      if (l.mode === 'air') return l.flight && l.flight.seats != null ? h('span', { key: i, className: 'rt-crowd-item' }, h('b', { className: 'rt-crowd-code' }, l.code), h('span', { className: 'rt-crowd-label' }, seatsText(l.flight.seats))) : null;
+      return l.crowd ? h(CrowdMeter, { key: i, code: l.code, level: l.crowd }) : null;
+    }).filter(Boolean);
+    var notes = [].concat(p.notices || [], p.warnings || []);
     var lateDep = !!p.wasDep;
     return h('li', { className: 'rt-trip' },
-      h('button', { type: 'button', className: 'rt-trip-head', 'aria-expanded': String(open), onClick: function () { setOpen(!open); } },
-        h('div', { className: 'rt-t1' },
-          lateDep ? h('span', { className: 'rt-was' }, p.wasDep) : null,
-          h('span', { className: cx('dep', lateDep && 'rt-late') }, p.dep), h('span', { className: 'to' }, '–'),
-          h('span', { className: 'arr' }, p.arr),
+      h('button', { type: 'button', className: 'rt-trip-head', 'aria-expanded': String(open), onClick: toggle },
+        h('span', { className: 'rt-t1' },
+          h('b', { className: 'times' },
+            lateDep ? h('span', { className: 'rt-was' }, p.wasDep) : null,
+            h('span', { className: lateDep ? 'rt-late' : undefined }, p.dep), ' – ', p.arr),
           h('span', { className: 'dur' }, p.duration)),
-        h('div', { className: 'rt-meta' },
-          p.soon ? h('span', { className: 'soon' }, p.soon) : null,
+        h('span', { className: 'rt-meta' },
+          p.soon ? h('b', { className: 'soon' }, p.soon) : null,
           h('span', null, changes ? changes + ' bytte' + (changes > 1 ? 'r' : '') : 'Direkte'),
           p.realtime ? h('span', { className: 'rt-rt' }, 'Sanntid') : null,
           p.platform ? h('span', null, p.platform) : null),
-        h('div', { className: 'rt-bar', 'aria-hidden': 'true' }, legs.map(function (l, i) {
-          return h('span', { key: i, className: l.mode === 'foot' ? 'foot' : undefined, style: { flex: (l.duration || 1) / total, '--seg': l.mode === 'foot' ? 'transparent' : (l.colour || 'var(--m-' + modeKey(l.mode) + ')') } });
+        h('span', { className: 'rt-chips' }, withSep),
+        h('span', { className: 'rt-bar', 'aria-hidden': 'true' }, legs.map(function (l, i) {
+          return h('span', { key: i, className: l.mode === 'foot' ? 'foot' : undefined, style: { flex: Math.max(2, l.duration || l.minutes || 1), '--seg': l.mode === 'foot' ? 'transparent' : (l.colour || 'var(--m-' + modeKey(l.mode) + ')') } });
         })),
-        h('div', { className: 'rt-chips' }, withSep),
+        crowd.length ? h('span', { className: 'rt-crowd' }, h('span', { className: 'rt-crowd-title' }, 'Passasjerer'), crowd) : null),
+      (p.cancelled || notes.length) ? h('div', { className: 'rt-trip-notes' },
         p.cancelled ? h(WarningLine, { tone: 'crit' }, 'Del av reisen er innstilt.') : null,
-        (p.warnings || []).map(function (w, i) { return h(WarningLine, { key: i }, w); })),
-      open ? h('ol', { className: 'rt-legs' }, legs.map(Leg)) : null);
+        notes.map(function (w, i) { return h(WarningLine, { key: i }, w); })) : null,
+      open ? h('div', { className: 'rt-trip-body' },
+        h('ol', { className: 'rt-legs' }, legs.map(Leg)),
+        p.actions ? h('div', { className: 'rt-trip-actions' }, p.actions) : null) : null);
   }
 
   function DepartureRow(p) {
@@ -226,12 +306,12 @@
     return h('div', { className: 'rt-res-head' },
       h('div', { style: { minWidth: 0 } }, h('h2', null, p.title), p.subtitle ? h('p', null, p.subtitle) : null),
       h('div', { className: 'rt-acts' },
-        h(IconButton, { icon: 'star', label: 'Lagre reisen', pressed: !!p.saved }),
-        h(IconButton, { icon: 'share', label: 'Del oppsettet' })));
+        p.onSave === null ? null : h(IconButton, { icon: 'star', label: p.saved ? 'Fjern fra Mine reiser' : 'Lagre reisen', pressed: !!p.saved, onClick: p.onSave }),
+        p.onShare === null ? null : h(IconButton, { icon: 'share', label: 'Del oppsettet', onClick: p.onShare })));
   }
 
   window.Reisetavla = Object.assign(window.Reisetavla || {}, {
-    Root: Root, AppHeader: AppHeader, StatusBadge: StatusBadge, Note: Note, Button: Button, IconButton: IconButton, Icon: Icon,
+    Root: Root, Switch: Switch, CrowdMeter: CrowdMeter, AppHeader: AppHeader, StatusBadge: StatusBadge, Note: Note, Button: Button, IconButton: IconButton, Icon: Icon,
     SavedChip: SavedChip, SearchCard: SearchCard, SegmentedControl: SegmentedControl, ModeChip: ModeChip,
     SuggestionList: SuggestionList, LinePill: LinePill, WalkChip: WalkChip, TripCard: TripCard, DepartureRow: DepartureRow,
     WarningLine: WarningLine, EmptyState: EmptyState, Skeleton: Skeleton, BottomSheet: BottomSheet, Toast: Toast,

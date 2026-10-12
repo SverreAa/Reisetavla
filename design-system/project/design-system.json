@@ -34,5 +34,5 @@
   },
   "blobs": {},
   "docs": { "readme": "project/README.md", "sections": [] },
-  "lastChange": { "by": "Sverre", "at": "2026-10-09T15:00:00Z", "via": "Claude Code", "note": "Root-komponent, knappefiks og nowrap; lik Claude Design-prosjektet" }
+  "lastChange": { "by": "Sverre", "at": "2026-10-12T23:30:00Z", "via": "Claude Code", "note": "Reise og kart: TripCard med belegg, merknader og fly; nye Switch og CrowdMeter; mørkt tema via Root" }
 }

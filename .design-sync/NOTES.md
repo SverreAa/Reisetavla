@@ -6,6 +6,10 @@
 - Adding a component: add it to bundle.js (function + header + export block), index.d.ts, and create components/<Name>/README.md + preview.html (build.mjs reads both for every export), then author `.design-sync/previews/<Name>.tsx`.
 - Run: `node design-system/package/build.mjs`, then `node .ds-sync/package-build.mjs --config .design-sync/config.json --node-modules design-system/package/node_modules --out ./ds-bundle`.
 
+## The app
+- The app (`app/`, built to `app/dist/` and loaded by root `index.html`) imports `reisetavla-ds` from `design-system/package/dist`. After any design-system change: `node design-system/package/build.mjs` then `node app/build.mjs`. The old single-file app lives in `legacy/index.html`.
+- Root sets `data-theme` itself (reads prefers-color-scheme in JS); `dist/styles.css` has no media query any more (fix requested in design_handoff_reise_kart).
+
 ## Gotchas fixed this run
 - Button reset must stay `:where(.rt-root) button{…}` (zero specificity) — `.rt-root button` beat `.rt-btn` and stripped button backgrounds.
 - `Root` sets `data-theme` on a div, so the dark tokens are also declared on `[data-theme="dark"]` (not only `:root[...]`), plus a `[data-theme="light"]` block.
@@ -14,7 +18,7 @@
 - Git lives at `C:\Program Files\Git\cmd` (installed during the first sync; sessions started earlier don't have it on PATH). Repo-local user.name/email are set.
 
 ## Known render warns
-- none outstanding. 13 components use `cardMode: "column"` (GRID_OVERFLOW remedy); BottomSheet uses `cardMode: "single"`.
+- none outstanding. TripCard ExpandedWithFlight is taller than the review capture frame; the bottom of the flight box is cropped in the sheet only (graded good). 13 components use `cardMode: "column"` (GRID_OVERFLOW remedy); BottomSheet uses `cardMode: "single"`.
 
 ## Re-sync risks
 - `design-system/project/` and the package can drift if someone edits the artifact on claude.ai and not the local files (or vice versa): re-read the artifact's files before a re-sync.

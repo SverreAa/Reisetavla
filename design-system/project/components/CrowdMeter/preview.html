@@ -1,0 +1,9 @@
+<!-- @dsCard group="Reise" height=96 -->
+<!doctype html>
+<html lang="no"><head><meta charset="utf-8"><title>CrowdMeter</title><style>html,body{margin:0}</style></head>
+<body><div id="root"></div>
+<script>
+var R = window.Reisetavla, h = React.createElement;
+ReactDOM.createRoot(document.getElementById('root')).render(h(R.Root, { screen: true },
+  h('div', { className: 'rt-crowd' }, h('span', { className: 'rt-crowd-title' }, 'Passasjerer'), h(R.CrowdMeter, { code: 'F2', level: 1 }), h(R.CrowdMeter, { code: '2', level: 2 }), h(R.CrowdMeter, { code: '19', level: 3 }))));
+</script></body></html>
