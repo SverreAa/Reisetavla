@@ -179,6 +179,7 @@
     if (f.status) rows.push(['Status', f.status]);
     if (f.seats != null) rows.push(['Ledige seter', String(f.seats)]);
     if (f.gate) rows.push(['Gate', f.gate + (f.gateOpen ? ' · åpner ' + f.gateOpen : '')]);
+    if (f.checkIn) rows.push(['Innsjekk', 'Område ' + f.checkIn]);
     if (f.bagDrop) rows.push(['Bagasjeslipp stenger', f.bagDrop]);
     if (f.belt) rows.push(['Bagasjebånd' + (f.beltAirport ? ' i ' + f.beltAirport : ''), 'Bånd ' + f.belt + (f.beltTime ? ' · ' + f.beltTime : '')]);
     if (f.aircraft) rows.push(['Fly', f.aircraft]);

@@ -176,7 +176,7 @@ export default function MapScreen({ trip, search, live, alertOn, setAlertOn, onB
     for (let i = labels.length - 1; i > 0; i--) {
       const a = labels[i - 1], b = labels[i];
       if (a.kind.startsWith('Av') && b.kind.startsWith('På') && a.name === b.name) {
-        a.kind = 'Bytte · ' + b.kind.replace('På · ', ''); a.meta = `${a.meta.split(' · ')[0]} → ${b.meta.split(' · ')[0]}`; a.c = b.c; a.op = b.op;
+        a.kind = 'Bytte · ' + b.kind.replace('På · ', ''); const gate = (b.meta.match(/ · Gate .+$/) || [""])[0]; a.meta = `${a.meta.split(' · ')[0]} → ${b.meta.split(' · ')[0]}${gate}`; a.c = b.c; a.op = b.op;
         labels.splice(i, 1);
       }
     }

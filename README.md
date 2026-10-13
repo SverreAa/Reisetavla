@@ -33,5 +33,5 @@ Første gang: `npm install` i `app/` og i `design-system/package/`.
 ## Datakilder
 
 Entur reiseplanlegger, geokoder og kjøretøyposisjoner (NLOD). Kart: © Kartverket, med OpenStreetMap som reserve.
-Billettkontroll og flyinfo (gate, seter, bagasjebånd) har ingen kilde ennå og vises bare i demo.
+Flydata: flightnummer og flyselskap fra Entur; gate, innsjekk, status og bagasjebånd fra Avinors åpne flydata. Avinor tillater ikke at nettlesere spør direkte, så GitHub Actions (`.github/workflows/flydata.yml`, `scripts/flydata.mjs`) henter dataene omtrent hvert 10. minutt og legger dem i grenen `flydata` (`flydata.json`), som appen leser. Ledige seter og flytype har ingen åpen kilde og vises bare i demo, sammen med billettkontroll.
 Tilbakemeldinger lagres på enheten til `FEEDBACK_URL` i `app/src/sheets/FeedbackSheet.jsx` er satt.

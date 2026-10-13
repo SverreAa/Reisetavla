@@ -7,6 +7,6 @@ Ett reiseforslag. Lukket viser kortet svaret på et blikk; åpent viser det hver
 - Linje 3: LinePill/WalkChip-rad med «›». Linje 4: reisestolpe der hver etappe er `flex: minutter` (minst 2), gange prikket i `m-foot`.
 - Linje 5 «PASSASJERER»: CrowdMeter per kjøretøyetappe med `crowd`, fly med ledige seter. Etapper uten data utelates; ingen data gir ingen rad.
 - `notices` vises under hodet som WarningLine: billettkontroll («Billettkontroll meldt ved Tullinløkka på trikk 19 for 12 min siden») og gange over grensen. Vis billettkontroll bare når meldingen er fersk (≤ 30 min).
-- Åpent kort: etappeliste med tider, linjefarget stolpe (gange prikket), «Fra X · Plattform B», «Til Y · 4 stopp underveis», belegg «Trangt om bord». Fly får infoboks med flightnummer, status, ledige seter, gate, bagasjeslipp, bagasjebånd og flytype – bare radene som har data.
+- Åpent kort: etappeliste med tider, linjefarget stolpe (gange prikket), «Fra X · Plattform B», «Til Y · 4 stopp underveis», belegg «Trangt om bord». Fly får infoboks med flightnummer, status, ledige seter, gate, innsjekk, bagasjeslipp, bagasjebånd og flytype – bare radene som har data. I appen kommer flightnummer og flyselskap fra Entur, og gate, innsjekk, status og bagasjebånd fra Avinor; ledige seter og flytype har ingen åpen kilde.
 - `expanded` + `onToggle` gjør kortet kontrollert, slik at appen kan huske åpent kort. `actions` vises nederst i åpent kort; bruk én primær Button med ikon `pin`: «Vis i kart».
 - Legg kortene i `<ul className="rt-list">`.
