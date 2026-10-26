@@ -40,13 +40,13 @@ const tripQuery = (withOcc) => `query($from:Location!,$to:Location!,$dateTime:Da
  trip(from:$from,to:$to,dateTime:$dateTime,arriveBy:$arriveBy,modes:$modes,banned:$banned,numTripPatterns:8){
   tripPatterns{ aimedStartTime expectedStartTime aimedEndTime expectedEndTime duration
    legs{ mode transportSubmode serviceDate distance duration realtime aimedStartTime expectedStartTime aimedEndTime expectedEndTime
-    line{ id publicCode name transportMode authority{ name } presentation{ colour textColour } }
+    line{ id publicCode name transportMode authority{ name } operator{ name } presentation{ colour textColour } }
     fromPlace{ name latitude longitude quay{ id publicCode } }
     toPlace{ name latitude longitude quay{ id publicCode } }
     fromEstimatedCall{ ${CALL_FIELDS}${withOcc ? ' occupancyStatus' : ''} }
     intermediateEstimatedCalls{ quay{ name latitude longitude } aimedArrivalTime expectedArrivalTime expectedDepartureTime }
     pointsOnLink{ points }
-    serviceJourney{ id }
+    serviceJourney{ id publicCode }
     situations{ severity summary{ value language } }
    } } } }`;
 
@@ -104,10 +104,11 @@ function normalizeLeg(l) {
   ];
   let poly = decodePolyline(l.pointsOnLink?.points);
   if (poly.length < 2) poly = [fromPt, toPt];
-  const code = mode === 'air' ? flightCode(l.line?.publicCode) : (l.line?.publicCode || '');
+  // Fly: flightnummeret (f.eks. DY636) ligger på serviceJourney, ikke på linjen. Flyselskapet er operatøren (Avinor er bare «authority»).
+  const code = mode === 'air' ? flightCode(l.serviceJourney?.publicCode || l.line?.publicCode) : (l.line?.publicCode || '');
   const leg = {
     mode, code,
-    lineId: l.line?.id || null, lineName: l.line?.name || '', operator: l.line?.authority?.name || '',
+    lineId: l.line?.id || null, lineName: l.line?.name || '', operator: (mode === 'air' ? l.line?.operator?.name : null) || l.line?.authority?.name || '',
     colour: l.line?.presentation?.colour ? '#' + l.line.presentation.colour : null,
     textColour: l.line?.presentation?.textColour ? '#' + l.line.presentation.textColour : null,
     towards: l.fromEstimatedCall?.destinationDisplay?.frontText || l.toPlace.name,

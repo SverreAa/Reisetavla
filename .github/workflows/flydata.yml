@@ -1,0 +1,42 @@
+# Henter flydata fra Avinor (gate, innsjekk, status, bagasjebånd) omtrent hvert 10. minutt
+# og legger dem i grenen «flydata» som én fil, flydata.json. Appen leser filen fra
+# https://raw.githubusercontent.com/SverreAa/Reisetavla/flydata/flydata.json
+# Grenen overskrives hver gang (én commit), så historikken på main ikke fylles opp.
+name: Flydata fra Avinor
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: flydata
+  cancel-in-progress: true
+
+jobs:
+  hent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Hent flydata
+        run: |
+          mkdir -p out
+          node scripts/flydata.mjs out/flydata.json
+      - name: Publiser til grenen flydata
+        run: |
+          cd out
+          git init -q -b flydata
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add flydata.json
+          git commit -q -m "Flydata fra Avinor $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" flydata

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Root, StatusBadge, TabBar, Toast, Note } from 'reisetavla-ds';
 import * as entur from './lib/entur.js';
+import { enrichFlights } from './lib/flydata.js';
 import { demoTrips, DEMO_SEARCH, DEMO_STOPS } from './lib/demo.js';
 import { load, save } from './lib/store.js';
 import { MODES } from './lib/format.js';
@@ -77,11 +78,14 @@ export default function App() {
       if (!live) list = demoTrips();
       else list = await entur.fetchTrips({ ...search, from: search.from, to: search.to, allModes });
       if (id !== runId.current) return;
+      if (live) await enrichFlights(list); // gate, status og bagasjebånd fra Avinor
+      if (id !== runId.current) return;
       setTrips(list);
       // Alle forslag fjernet av ekskluderte ruter: spør Entur om alternativer uten dem
       const fr = filterTrips(list, { excluded, maxWalk });
       if (live && !fr.cand.length && excluded.length) {
         const alt = await entur.fetchTrips({ ...search, allModes, bannedLines: excluded.map((e) => e.id) });
+        await enrichFlights(alt);
         if (id === runId.current) setAltTrips(alt);
       } else setAltTrips(null);
     } catch (e) {
