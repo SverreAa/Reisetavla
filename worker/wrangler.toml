@@ -1,0 +1,6 @@
+# Cloudflare Worker for flydata fra Avinor. Rulles ut automatisk av
+# .github/workflows/worker.yml når noe i worker/ endres på main.
+name = "reisetavla-flydata"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+workers_dev = true

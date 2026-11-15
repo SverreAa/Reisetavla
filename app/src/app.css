@@ -116,3 +116,15 @@ body { min-height: 100%; }
 .map-legs .strong { font-size: 14px; }
 .map-credit { margin: 0; font-size: 12px; color: var(--muted); }
 .leaflet-container { font: inherit; background: var(--surface-2); }
+
+/* Flyetapper i kartet: hendelser fra Avinor og videre forbindelse etter landing */
+.map-alert.map-flight { background: var(--accent); color: var(--bg); align-items: center; }
+.map-alert.map-flight.belt b { font-size: 18px; }
+.map-alert .map-x { margin-left: auto; flex: none; width: 28px; height: 28px; border-radius: var(--radius-full); border: 0; background: transparent; color: inherit; font-size: 20px; line-height: 1; cursor: pointer; opacity: .8; }
+.map-alert .map-x:focus-visible { outline: 2px solid currentColor; outline-offset: 1px; }
+.map-conn { margin: 0 12px 10px; padding: 10px 14px; border-radius: var(--radius-14); display: grid; gap: var(--space-6); background: var(--surface-2); flex: none; }
+.map-conn b { font-family: var(--font-display); font-weight: 800; font-size: 15px; }
+.map-conn span { font-size: 14px; color: var(--muted); }
+.map-conn.missed { background: color-mix(in srgb, var(--warn) 16%, var(--surface)); }
+.map-conn.missed b { color: var(--ink); }
+.map-flightline { color: var(--ink); font-weight: 600; }

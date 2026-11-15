@@ -1,0 +1,37 @@
+# Ruller ut Cloudflare Worker-en for flydata (worker/) når den endres på main, eller på knappetrykk.
+# Krever to hemmeligheter i repoet (Settings → Secrets and variables → Actions):
+#   CLOUDFLARE_API_TOKEN  – API-token med malen «Edit Cloudflare Workers»
+#   CLOUDFLARE_ACCOUNT_ID – konto-ID fra Cloudflare-dashbordet
+name: Cloudflare Worker for flydata
+
+on:
+  push:
+    branches: [main]
+    paths: ['worker/**', '.github/workflows/worker.yml']
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sjekk at Cloudflare-hemmelighetene finnes
+        id: check
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$TOKEN" ] || [ -z "$ACCOUNT" ]; then
+            echo "::notice::Hopper over utrulling: CLOUDFLARE_API_TOKEN og CLOUDFLARE_ACCOUNT_ID er ikke satt ennå."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Rull ut til Cloudflare
+        if: steps.check.outputs.ok == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker

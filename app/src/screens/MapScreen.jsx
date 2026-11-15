@@ -8,6 +8,7 @@ import { journeyState, legPoints, classifyVehicles } from '../lib/progress.js';
 import { splitAt } from '../lib/geo.js';
 import { makeObstacles, placeAll, labelWidth } from '../lib/labels.js';
 import { CONTROL_MAX_AGE } from '../lib/view.js';
+import { useFlightWatch, flightLine } from '../lib/landing.js';
 
 const FADED = 0.28;
 const CROWD = [null, 'God plass', 'Noe trangt', 'Trangt'];
@@ -15,7 +16,7 @@ const controlAge = (c) => Math.max(0, Math.round((Date.now() - new Date(c.report
 
 function cssVar(el, name) { return getComputedStyle(el).getPropertyValue(name).trim() || '#5a6779'; }
 
-export default function MapScreen({ trip, search, live, alertOn, setAlertOn, onBack }) {
+export default function MapScreen({ trip: tripIn, search, live, alertOn, setAlertOn, onBack }) {
   const wrapRef = useRef(null), mapEl = useRef(null), topRef = useRef(null), sheetRef = useRef(null);
   const mapRef = useRef(null), layerRef = useRef(null);
   const [view, setView] = useState(0);
@@ -32,6 +33,9 @@ export default function MapScreen({ trip, search, live, alertOn, setAlertOn, onB
   const [theme, setTheme] = useState(document.documentElement.getAttribute('data-theme'));
   const [tiles, setTiles] = useState('kv');
   const demo = live === false;
+  // Flyetapper: Avinor-data, ny ankomsttid, bagasjebånd og ny forbindelse ved forsinkelse
+  const fw = useFlightWatch(tripIn, { live });
+  const trip = fw.trip;
 
   // Klokke og tema
   useEffect(() => { const iv = setInterval(() => setClock(Date.now()), 15000); return () => clearInterval(iv); }, []);
@@ -94,7 +98,7 @@ export default function MapScreen({ trip, search, live, alertOn, setAlertOn, onB
     const ro = new ResizeObserver(() => map.invalidateSize());
     ro.observe(mapEl.current);
     return () => { ro.disconnect(); map.remove(); mapRef.current = null; };
-  }, [trip]);
+  }, [trip.key]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Valgt rute: trasé og kjøretøy
   useEffect(() => {
@@ -253,6 +257,19 @@ export default function MapScreen({ trip, search, live, alertOn, setAlertOn, onB
         {js && js.alertTitle && (
           <div className="map-alert" role="alert"><b>{js.alertTitle}</b><span>{js.alertText}</span></div>
         )}
+        {fw.event && (
+          <div className={`map-alert map-flight${fw.event.belt ? ' belt' : ''}`} role="status">
+            <b>{fw.event.title}</b><span>{fw.event.text}</span>
+            <button type="button" className="map-x" aria-label="Lukk melding" onClick={fw.dismissEvent}>×</button>
+          </div>
+        )}
+        {fw.connection && (
+          <div className={`map-conn ${fw.connection.kind}`} role="status">
+            <b>{fw.connection.title}</b>
+            <span>{fw.connection.text}</span>
+            {fw.connection.trip && <Button onClick={fw.accept}>Bytt til ny forbindelse</Button>}
+          </div>
+        )}
         <div className="map-summary">
           <div className="row"><b>{hm(trip.start)} – {hm(trip.end)}</b><span>{durText(trip.minutes)}</span></div>
           {js && <span className="status">{js.status}</span>}
@@ -300,6 +317,7 @@ export default function MapScreen({ trip, search, live, alertOn, setAlertOn, onB
                     <div className="grow">
                       <div className="strong">{l.mode === 'foot' ? `Gå ${l.meters} m til ${l.to.name}` : `${l.from.name} → ${l.to.name}`}</div>
                       <div className="app-small tabular">{meta}</div>
+                      {l.mode === 'air' && flightLine(l.flight) && <div className="app-small map-flightline">{flightLine(l.flight)}</div>}
                     </div>
                   </li>
                 );

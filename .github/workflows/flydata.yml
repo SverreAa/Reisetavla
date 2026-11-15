@@ -1,5 +1,6 @@
-# Henter flydata fra Avinor (gate, innsjekk, status, bagasjebånd) omtrent hvert 10. minutt
-# og legger dem i grenen «flydata» som én fil, flydata.json. Appen leser filen fra
+# RESERVE for Cloudflare Worker-en (worker/). Henter flydata fra Avinor (gate, innsjekk, status, bagasjebånd)
+# og legger dem i grenen «flydata» som én fil, flydata.json. Planlagt hvert 10. minutt, men GitHub
+# nedprioriterer planlagte jobber, så i praksis går den sjeldnere. Appen leser filen fra
 # https://raw.githubusercontent.com/SverreAa/Reisetavla/flydata/flydata.json
 # Grenen overskrives hver gang (én commit), så historikken på main ikke fylles opp.
 name: Flydata fra Avinor
@@ -23,7 +24,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: scripts
+          sparse-checkout: |
+            scripts
+            worker/src
       - uses: actions/setup-node@v4
         with:
           node-version: '20'

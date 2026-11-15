@@ -29,9 +29,11 @@ Første gang: `npm install` i `app/` og i `design-system/package/`.
 - `kart.html` – Reisekart: alle kjøretøy i sanntid (GPS fra Entur og beregnede posisjoner der operatøren ikke sender GPS, f.eks. Ruter), avvik og delte reiser (`kart.html?r=…`).
 - `sw.js`, `manifest.webmanifest`, `icons/` – PWA: appen kan legges på Hjem-skjermen og åpner uten nett; rutedata hentes alltid ferskt.
 - `legacy/` – tidligere versjoner av forsiden.
+- `worker/` – Cloudflare Worker for flydata fra Avinor (rulles ut av `.github/workflows/worker.yml`).
 
 ## Datakilder
 
 Entur reiseplanlegger, geokoder og kjøretøyposisjoner (NLOD). Kart: © Kartverket, med OpenStreetMap som reserve.
-Flydata: flightnummer og flyselskap fra Entur; gate, innsjekk, status og bagasjebånd fra Avinors åpne flydata. Avinor tillater ikke at nettlesere spør direkte, så GitHub Actions (`.github/workflows/flydata.yml`, `scripts/flydata.mjs`) henter dataene omtrent hvert 10. minutt og legger dem i grenen `flydata` (`flydata.json`), som appen leser. Ledige seter og flytype har ingen åpen kilde og vises bare i demo, sammen med billettkontroll.
+Flydata: flightnummer og flyselskap fra Entur; gate, innsjekk, status, ny tid og bagasjebånd fra Avinors åpne flydata. Avinor tillater ikke at nettlesere spør direkte, så en Cloudflare Worker (`worker/`, se `worker/README.md`) henter dataene for flyplassene reisen går via og mellomlagrer dem i 3 minutter. Adressen settes i `app/src/lib/config.js`. Reserve: GitHub Actions (`.github/workflows/flydata.yml`, `scripts/flydata.mjs`) legger alle flydata i grenen `flydata` (`flydata.json`), men GitHub kjører den planlagte jobben sjelden. Data eldre enn 30 min vises uten gate og bånd, og eldre enn 3 timer brukes ikke.
+I kartet følges flyetappene: hvert minutt rundt landing sjekkes ny ankomsttid, landing og bagasjebånd, med varsel. Rekker du ikke videre forbindelse, foreslås en ny fra Entur. Ledige seter og flytype har ingen åpen kilde og vises bare i demo, sammen med billettkontroll.
 Tilbakemeldinger lagres på enheten til `FEEDBACK_URL` i `app/src/sheets/FeedbackSheet.jsx` er satt.
