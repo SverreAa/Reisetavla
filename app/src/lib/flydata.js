@@ -47,25 +47,48 @@ export function matchFlight(data, leg) {
   return best;
 }
 
+// Hvor gamle Avinor-dataene kan være før vi slutter å stole på dem.
+// GitHub kjører hentejobben langt sjeldnere enn planlagt, så dataene kan være timer gamle.
+export const FRESH_MIN = 30;     // gate, innsjekk og bånd vises bare innenfor denne grensen
+export const USABLE_MIN = 180;   // eldre enn dette: Avinor-data brukes ikke i det hele tatt
+
+export function flydataAgeMin(data, now = Date.now()) {
+  const t = data && data.updated ? new Date(data.updated).getTime() : NaN;
+  return Number.isFinite(t) ? Math.max(0, Math.round((now - t) / 60000)) : Infinity;
+}
+
 // Legg Avinor-data inn i flight-objektet på flyetappene (muterer reisene).
+// Ferske data (≤ 30 min): status, gate, innsjekk og bånd, med klokkeslett for oppdateringen.
+// 30 min–3 t: bare status, tydelig merket med hvor gammel den er. Eldre: Enturs egen status beholdes.
 export async function enrichFlights(trips) {
   const air = trips.flatMap((t) => t.legs).filter((l) => l.mode === 'air');
   if (!air.length) return false;
   const data = await loadFlydata();
   if (!data) return false;
+  const age = flydataAgeMin(data);
+  if (age > USABLE_MIN) return false;
+  const fresh = age <= FRESH_MIN;
+  const at = hmLocal(data.updated);
   let changed = false;
   air.forEach((leg) => {
     const f = matchFlight(data, leg);
     if (!f) return;
-    leg.flight = {
-      ...(leg.flight || {}),
-      status: statusText(f),
-      gate: f.gate || undefined,
-      checkIn: f.checkIn || undefined,
-      belt: f.belt || undefined,
-      beltAirport: f.belt ? airportShort(leg.to.name) : undefined,
-      updated: data.updated,
-    };
+    const { gate, checkIn, belt, beltAirport, ...rest } = leg.flight || {};
+    leg.flight = fresh
+      ? {
+          ...rest,
+          status: `${statusText(f)} · Avinor ${at}`,
+          gate: f.gate || undefined,
+          checkIn: f.checkIn || undefined,
+          belt: f.belt || undefined,
+          beltAirport: f.belt ? airportShort(leg.to.name) : undefined,
+          updated: data.updated,
+        }
+      : {
+          ...rest,
+          status: `${statusText(f)} (sist oppdatert ${at} – sjekk skjermene på flyplassen)`,
+          updated: data.updated,
+        };
     changed = true;
   });
   return changed;
